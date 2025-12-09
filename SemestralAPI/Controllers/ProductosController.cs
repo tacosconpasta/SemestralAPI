@@ -22,13 +22,13 @@ namespace SemestralAPIClone.Controllers {
   public class ProductosController : Controller {
 
     //productosEjemplo, esto sería reemplazado por conexión a BD en cada endpoint.
-    List<Producto> productosBaseDatos { get; set; } = new List<Producto>();
+    List<Articulo> productosBaseDatos { get; set; } = new List<Articulo>();
 
 
     //Obtener Productos
     //Al solicitar "GET" a la ruta "[controller]"
     [HttpGet]
-    public ActionResult<List<Producto>> ObtenerProductos() {
+    public ActionResult<List<Articulo>> ObtenerProductos() {
       return Ok(productosBaseDatos);
     }
 
@@ -37,10 +37,10 @@ namespace SemestralAPIClone.Controllers {
     //Obtener Productos por Id
     //Al Solicitar "GET" a la ruta "/[controller]/producto_id"
     [HttpGet("{id}")]
-    public ActionResult<Producto> ObtenerProductoPorId(int id) {
+    public ActionResult<Articulo> ObtenerProductoPorId(int id) {
 
       //Buscar producto por Id
-      foreach (Producto producto in productosBaseDatos)
+      foreach (Articulo producto in productosBaseDatos)
         if (producto.id == id) return Ok(producto);
 
       return NotFound("No se encontró ese producto");
