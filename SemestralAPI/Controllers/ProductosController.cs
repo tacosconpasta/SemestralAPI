@@ -20,6 +20,8 @@ namespace SemestralAPIClone.Controllers {
 
   //Declarar Clase
   public class ProductosController : Controller {
+    //Variables de Entorno:
+    //Environment.GetEnvironmentVariable("DB_USER")
 
     //productosEjemplo, esto sería reemplazado por conexión a BD en cada endpoint.
     List<Articulo> productosBaseDatos { get; set; } = new List<Articulo>();
@@ -38,11 +40,6 @@ namespace SemestralAPIClone.Controllers {
     //Al Solicitar "GET" a la ruta "/[controller]/producto_id"
     [HttpGet("{id}")]
     public ActionResult<Articulo> ObtenerProductoPorId(int id) {
-
-      //Buscar producto por Id
-      foreach (Articulo producto in productosBaseDatos)
-        if (producto.id == id) return Ok(producto);
-
       return NotFound("No se encontró ese producto");
     }
 
