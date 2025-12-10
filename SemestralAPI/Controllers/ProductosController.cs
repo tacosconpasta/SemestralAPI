@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using SemestralAPI.Libraries;
 using SemestralAPI.Models;
 using SemestralAPI.RequestParams.Productos;
 
@@ -20,18 +21,19 @@ namespace SemestralAPIClone.Controllers {
 
   //Declarar Clase
   public class ProductosController : Controller {
-    //Variables de Entorno:
-    //Environment.GetEnvironmentVariable("DB_USER")
 
-    //productosEjemplo, esto sería reemplazado por conexión a BD en cada endpoint.
-    List<Articulo> productosBaseDatos { get; set; } = new List<Articulo>();
-
+    private BaseDatos bd = new BaseDatos(
+      Environment.GetEnvironmentVariable("HOST_NAME")!,
+      Environment.GetEnvironmentVariable("DB_NAME")!,
+      Environment.GetEnvironmentVariable("DB_USER")!,
+      Environment.GetEnvironmentVariable("DB_PASSWORD")!
+      );
 
     //Obtener Productos
     //Al solicitar "GET" a la ruta "[controller]"
     [HttpGet]
     public ActionResult<List<Articulo>> ObtenerProductos() {
-      return Ok(productosBaseDatos);
+      return Ok("ok");
     }
 
 
@@ -40,7 +42,11 @@ namespace SemestralAPIClone.Controllers {
     //Al Solicitar "GET" a la ruta "/[controller]/producto_id"
     [HttpGet("{id}")]
     public ActionResult<Articulo> ObtenerProductoPorId(int id) {
-      return NotFound("No se encontró ese producto");
+      if (bd.ProbarConexion()) {
+        return Ok("Se conectó a la BD bro");
+      } else {
+        return NotFound("No se conectó a NADA");
+      }
     }
 
 
