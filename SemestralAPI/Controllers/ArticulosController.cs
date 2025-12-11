@@ -32,23 +32,41 @@ namespace SemestralAPIClone.Controllers {
     //Obtener Articulos
     //Al solicitar "GET" a la ruta "articulos"
     [HttpGet]
-    public ActionResult<List<Articulo>> ObtenerArticulos() {
-      return Ok("ok");
+    public ActionResult<List<Articulo>> ObtenerProductos() {
+      if (!bd.ProbarConexion())
+        return StatusCode(500, "Error: No se pudo conectar a la base de datos.");
+
+      string query = "SELECT id, nombre, descripcion, precio, stock, paga_itbms FROM articulo;";
+
+      List<Articulo> lista = bd.LeerTabla<Articulo>(query);
+
+      return Ok(new {
+        producto = lista
+      });
     }
 
-
-
-    //Obtener Articulos por Id
-    //Al Solicitar "GET" a la ruta "/articulos/producto_id"
-    [HttpGet("{id}")]
+    // 📌 Obtener UN producto por Id  →  GET /api/productos/{id}
+        // ===============================================================
+        [HttpGet("{id}")]
     public ActionResult<Articulo> ObtenerProductoPorId(int id) {
-      if (bd.ProbarConexion()) {
-        return Ok("Se conectó a la BD bro");
-      } else {
-        return NotFound("No se conectó a NADA");
-      }
+      if (!bd.ProbarConexion())
+        return StatusCode(500, "Error: No se pudo conectar a la base de datos.");
+
+      string query =
+          $"SELECT id, nombre, descripcion, precio, stock, paga_itbms, created_at, updated_at FROM articulo WHERE id = {id};";
+
+      List<Articulo> lista = bd.LeerTabla<Articulo>(query);
+
+      if (lista.Count == 0)
+        return NotFound(new { message = $"Producto con id {id} no encontrado" });
+
+      return Ok(new {
+        id = id,
+        producto = lista.First()
+      });
     }
 
+    //
 
     //Insertar Producto
     //Al solicitar "POST" a la ruta "articulos"
