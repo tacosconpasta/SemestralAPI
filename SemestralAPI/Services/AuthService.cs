@@ -2,6 +2,10 @@
 using System.Linq;
 using SemestralAPI.Models;
 
+//esta clase está SUSPENDIDA
+//Porque el approach con Tokens es eliminado por 
+//restricciones de tiempo
+
 namespace SemestralAPI.Services {
   public class AuthService {
     // Datos de ejemplo, prueba
