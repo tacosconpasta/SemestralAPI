@@ -45,22 +45,28 @@ namespace SemestralAPIClone.Controllers {
       });
     }
 
-
-    //Obtener Productos por Id
-    //Al Solicitar "GET" a la ruta "/[controller]/producto_id"
-    [HttpGet]
-    public ActionResult<List<Articulo>> ObtenerProductos() {
+    // 📌 Obtener UN producto por Id  →  GET /api/productos/{id}
+        // ===============================================================
+        [HttpGet("{id}")]
+    public ActionResult<Articulo> ObtenerProductoPorId(int id) {
       if (!bd.ProbarConexion())
         return StatusCode(500, "Error: No se pudo conectar a la base de datos.");
 
-      string query = "SELECT id, nombre, descripcion, precio, stock, paga_itbms FROM articulo;";
+      string query =
+          $"SELECT id, nombre, descripcion, precio, stock, paga_itbms, created_at, updated_at FROM articulo WHERE id = {id};";
 
       List<Articulo> lista = bd.LeerTabla<Articulo>(query);
 
+      if (lista.Count == 0)
+        return NotFound(new { message = $"Producto con id {id} no encontrado" });
+
       return Ok(new {
-        producto = lista
+        id = id,
+        producto = lista.First()
       });
     }
+
+    //
 
     //Insertar Producto
     //Al solicitar "POST" a la ruta "[controller]"
