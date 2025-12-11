@@ -12,15 +12,15 @@ namespace SemestralAPIClone.Controllers {
   [ApiController]
 
   //[controller] = esta clase
-  //Automáticamente enruta todos los métodos de la clase "ProductosController"
-  //bajo una ruta central "Productos"
-  [Route("api/[controller]")]
+  //Automáticamente enruta todos los métodos de la clase "ArticulosController"
+  //bajo una ruta central "Articulos"
+  [Route("api/articulos")]
 
   // FIN DECORADORES //
 
 
   //Declarar Clase
-  public class ProductosController : Controller {
+  public class ArticulosController : Controller {
 
     private BaseDatos bd = new BaseDatos(
       Environment.GetEnvironmentVariable("HOST_NAME")!,
@@ -29,17 +29,17 @@ namespace SemestralAPIClone.Controllers {
       Environment.GetEnvironmentVariable("DB_PASSWORD")!
       );
 
-    //Obtener Productos
-    //Al solicitar "GET" a la ruta "[controller]"
+    //Obtener Articulos
+    //Al solicitar "GET" a la ruta "articulos"
     [HttpGet]
-    public ActionResult<List<Articulo>> ObtenerProductos() {
+    public ActionResult<List<Articulo>> ObtenerArticulos() {
       return Ok("ok");
     }
 
 
 
-    //Obtener Productos por Id
-    //Al Solicitar "GET" a la ruta "/[controller]/producto_id"
+    //Obtener Articulos por Id
+    //Al Solicitar "GET" a la ruta "/articulos/producto_id"
     [HttpGet("{id}")]
     public ActionResult<Articulo> ObtenerProductoPorId(int id) {
       if (bd.ProbarConexion()) {
@@ -51,7 +51,7 @@ namespace SemestralAPIClone.Controllers {
 
 
     //Insertar Producto
-    //Al solicitar "POST" a la ruta "[controller]"
+    //Al solicitar "POST" a la ruta "articulos"
     [HttpPost]
     public ActionResult<int> InsertarProducto(InsertarProductoRequest parametros) {
       return Ok("Producto Insertado");
