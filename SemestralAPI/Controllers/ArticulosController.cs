@@ -1,80 +1,160 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SemestralAPI.Libraries;
 using SemestralAPI.Models;
-using SemestralAPI.RequestParams.Productos;
+using SemestralAPI.RequestParams.Articulos;
 
-namespace SemestralAPIClone.Controllers {
+namespace SemestralAPI.Controllers {
 
-  // DECORADORES //
-
-  //Define esta clase como un controlador de API para
-  //ser identificada por ASP.NET automáticamente
+  //Indica que esta clase es un controlador API
   [ApiController]
 
-  //[controller] = esta clase
-  //Automáticamente enruta todos los métodos de la clase "ArticulosController"
-  //bajo una ruta central "Articulos"
+  //Ruta base para todos los endpoints de artículos
   [Route("api/articulos")]
+  public class ArticulosController : ControllerBase {
 
-  // FIN DECORADORES //
+    //Instancia de la clase que maneja la base de datos
+    private readonly BaseDatos bd;
 
-
-  //Declarar Clase
-  public class ArticulosController : Controller {
-
-    private BaseDatos bd = new BaseDatos(
-      Environment.GetEnvironmentVariable("HOST_NAME")!,
-      Environment.GetEnvironmentVariable("DB_NAME")!,
-      Environment.GetEnvironmentVariable("DB_USER")!,
-      Environment.GetEnvironmentVariable("DB_PASSWORD")!
+    public ArticulosController() {
+      //Inicializar la conexión a BD usando variables de entorno
+      bd = new BaseDatos(
+        Environment.GetEnvironmentVariable("HOST_NAME")!,
+        Environment.GetEnvironmentVariable("DB_NAME")!,
+        Environment.GetEnvironmentVariable("DB_USER")!,
+        Environment.GetEnvironmentVariable("DB_PASSWORD")!
       );
+    }
 
-    //Obtener Articulos
-    //Al solicitar "GET" a la ruta "articulos"
+    //Obtener lista de Artículos
     [HttpGet]
-    public ActionResult<List<Articulo>> ObtenerProductos() {
-      if (!bd.ProbarConexion())
-        return StatusCode(500, "Error: No se pudo conectar a la base de datos.");
+    public ActionResult ObtenerArticulos() {
 
-      string query = "SELECT id, nombre, descripcion, precio, stock, paga_itbms FROM articulo;";
+      // Solicitar a la BD la lista completa de artículos
+      var lista = bd.ObtenerArticulos();
 
-      List<Articulo> lista = bd.LeerTabla<Articulo>(query);
-
+      // Devolver la lista
       return Ok(new {
-        producto = lista
+        articulos = lista
       });
     }
 
-    // 📌 Obtener UN producto por Id  →  GET /api/productos/{id}
-        // ===============================================================
-        [HttpGet("{id}")]
-    public ActionResult<Articulo> ObtenerProductoPorId(int id) {
-      if (!bd.ProbarConexion())
-        return StatusCode(500, "Error: No se pudo conectar a la base de datos.");
+    //Obtener un artículo por ID
+    [HttpGet("{id:int}")]
+    public ActionResult ObtenerArticuloPorId(int id) {
 
-      string query =
-          $"SELECT id, nombre, descripcion, precio, stock, paga_itbms, created_at, updated_at FROM articulo WHERE id = {id};";
+      //Buscar el artículo en la BD por su ID
+      var articulo = bd.ObtenerArticuloPorId(id);
 
-      List<Articulo> lista = bd.LeerTabla<Articulo>(query);
+      //Responder 404 si no existe
+      if (articulo == null)
+        return NotFound(new { message = $"Artículo con id {id} no encontrado." });
 
-      if (lista.Count == 0)
-        return NotFound(new { message = $"Producto con id {id} no encontrado" });
-
-      return Ok(new {
-        id = id,
-        producto = lista.First()
-      });
+      //Devolver el artículo si existe
+      return Ok(articulo);
     }
 
-    //
-
-    //Insertar Producto
-    //Al solicitar "POST" a la ruta "articulos"
+    //Crear Artículo
     [HttpPost]
-    public ActionResult<int> InsertarProducto(InsertarProductoRequest parametros) {
-      return Ok("Producto Insertado");
+    public ActionResult CrearArticulo([FromBody] InsertarArticuloRequest req) {
+
+      //Validar que el body cumpla el modelo
+      if (!ModelState.IsValid)
+        return BadRequest(ModelState);
+
+      //Construir el objeto Articulo con los datos recibidos
+      var nuevoArticulo = new Articulo {
+        Nombre = req.Nombre,
+        Descripcion = req.Descripcion,
+        Precio = req.Precio,
+        Stock = req.Stock,
+        Paga_itbms = req.PagaITBMS
+      };
+
+      //Enviar a la BD para crear el artículo
+      var creado = bd.CrearArticulo(nuevoArticulo);
+
+      //Si hubo error en la creación, devolver 500
+      if (creado == null)
+        return StatusCode(500, "No se pudo crear el artículo.");
+
+      //Devolver 201 Created con la ubicación del nuevo recurso
+      return CreatedAtAction(
+          nameof(ObtenerArticuloPorId),
+          new { id = creado.Id },
+          creado
+      );
     }
 
+    //Editar un Artículo
+    [HttpPut("{id:int}")]
+    public ActionResult EditarArticulo(int id, [FromBody] ActualizarArticuloRequest req) {
+      //Validar que el body cumpla el modelo
+      if (!ModelState.IsValid)
+        return BadRequest(ModelState);
 
+      //Verificar que el artículo exista en la BD
+      var existente = bd.ObtenerArticuloPorId(id);
+
+      //Responder 404 si no existe
+      if (existente == null)
+        return NotFound(new { message = $"Artículo con id {id} no existe." });
+
+      //Actualizar los campos solo si fueron enviados
+      existente.Nombre = req.Nombre ?? existente.Nombre;
+      existente.Descripcion = req.Descripcion ?? existente.Descripcion;
+      existente.Precio = req.Precio ?? existente.Precio;
+      existente.Stock = req.Stock ?? existente.Stock;
+      existente.Paga_itbms = req.PagaITBMS ?? existente.Paga_itbms;
+
+      //Guardar cambios en la BD
+      var actualizado = bd.EditarArticulo(existente);
+
+      //Si la BD no actualizó, devolver 500
+      if (actualizado == null)
+        return StatusCode(500, "No se pudo actualizar el artículo.");
+
+      //Devolver el artículo actualizado (que es el mismo que fue enviado en el req)
+      return Ok(actualizado);
+    }
+
+    
+    //Eliminar un artículo
+    [HttpDelete("{id:int}")]
+    public ActionResult EliminarArticulo(int id) {
+
+      //Verificar que el artículo exista antes de eliminar
+      var existente = bd.ObtenerArticuloPorId(id);
+
+      //Si no existe
+      if (existente == null)
+        return NotFound(new { message = $"Artículo con id {id} no existe." });
+
+      //Intentar eliminar el artículo en la BD
+      bool eliminado = bd.EliminarArticulo(id);
+
+      //Si la BD falló al eliminar, devolver 500
+      if (!eliminado)
+        return StatusCode(500, "No se pudo eliminar el artículo.");
+
+      //Confirmar la eliminación
+      return Ok(new { message = "Artículo eliminado correctamente." });
+    }
+
+    //Buscar por nombre
+    [HttpPost("buscar")]
+    public ActionResult BuscarArticulosPorNombre([FromBody] BuscarArticuloByNameRequest parametros) {
+
+      //Validar parametros válido
+      if (string.IsNullOrWhiteSpace(parametros.Nombre))
+        return BadRequest(new { mensaje = "Debe proporcionar un nombre para la búsqueda." });
+
+      //Solicitar a bd artículos
+      var lista = bd.BuscarArticulosPorNombre(parametros.Nombre);
+
+      //Devolver la lista encontrada junto a la cantidad
+      return Ok(new {
+        articulos = lista
+      });
+    }
   }
 }

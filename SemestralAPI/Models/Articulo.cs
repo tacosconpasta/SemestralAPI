@@ -3,10 +3,11 @@
     public class Articulo
     {
     // Propiedades de artículo
-        public required int Id { get; set; }
-        public required string Nombre { get; set; }
-        public required decimal Precio { get; set; }
-        public required int Stock { get; set; }
-        public required bool Paga_itbms { get; set; }
+        public int Id { get; set; }
+        public string Nombre { get; set; }
+        public string Descripcion { get; set; }
+        public float Precio { get; set; }
+        public int Stock { get; set; }
+        public bool Paga_itbms { get; set; }
     }
 }
