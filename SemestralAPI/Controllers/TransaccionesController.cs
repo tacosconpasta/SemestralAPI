@@ -3,7 +3,7 @@ using SemestralAPI.Libraries;
 
 namespace SemestralAPI.Controllers {
   [ApiController]
-  [Route("api/[controller]")]
+  [Route("api/facturas")]
   public class TransaccionesController : Controller {
     private readonly BaseDatos _db;
 
@@ -16,29 +16,14 @@ namespace SemestralAPI.Controllers {
       );
     }
 
-    [HttpGet("{id}")]
-    public ActionResult ConsultarTransaccion(int id) {
-      // Obtener orden principal
-      var orden = _db.Consultar(
-          "SELECT * FROM orden WHERE id = @id",
-          new Dictionary<string, object> { { "@id", id } }
-      );
+    [HttpGet]
+    public IActionResult ObtenerFacturas() {
+      var lista = _db.ObtenerFacturas();
 
-      if (orden.Count == 0)
-        return NotFound(new { message = "La transacción no existe" });
+      if (lista == null || lista.Count == 0)
+        return NotFound(new { mensaje = "No hay facturas registradas." });
 
-      // Obtener detalles
-      var detalles = _db.Consultar(
-          "SELECT * FROM orden_detalle WHERE orden_id = @id",
-          new Dictionary<string, object> { { "@id", id } }
-      );
-
-      return Ok(new {
-        transaccion = new {
-          orden = orden[0],
-          detalles = detalles
-        }
-      });
+      return Ok(lista);
     }
   }
 }
