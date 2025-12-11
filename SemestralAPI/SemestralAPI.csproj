@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-	 <Folder Include="RequestParams\Sesion\" />
 	 <Folder Include="RequestParams\Transacciones\" />
   </ItemGroup>
 </Project>
