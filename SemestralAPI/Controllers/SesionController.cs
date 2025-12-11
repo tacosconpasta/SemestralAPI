@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Identity.Data;
+using Microsoft.AspNetCore.Mvc;
 using SemestralAPI.Libraries;
 using SemestralAPI.Models;
 using SemestralAPI.RequestParams.Sesion;
@@ -22,8 +24,9 @@ namespace SemestralAPI.Controllers {
     }
     */
 
+    //Especificar que el LoginRequest es de nuestro paquete y no del de Microsoft
     [HttpPost("login")]
-    public IActionResult Login([FromBody] LoginRequest request) {
+    public ActionResult Login([FromBody] RequestParams.Sesion.LoginRequest request) {
       var usuario = _bd.IniciarSesion(request.User.Trim(), request.Contrasena.Trim());
 
       //Si no se econtró un usuario
@@ -46,5 +49,31 @@ namespace SemestralAPI.Controllers {
       return NotFound("No se encontró ningún usuario con esas credenciales.");
     }
 
+
+    [HttpPost("register/cliente")]
+    public ActionResult<Cliente> Register([FromBody] RegisterClienteRequest request) {
+      //Asignar información de usuario del cliente en request, a objeto de clase Usuario
+      Usuario informacionUsuario = new Usuario { 
+        User=request.User, 
+        Contrasena=request.Contrasena, 
+        Rol="cliente" };
+
+      //Asignar información de cliente en request, a objeto de clase Cliente
+      Cliente informacionCliente = new Cliente {
+        Nombre = request.Nombre,
+        Apellido = request.Apellido,
+        Direccion = request.Direccion,
+        Correo = request.Correo,
+        Telefono = request.Telefono
+      };
+
+      bool esRegistradoCorrectamente = _bd.RegistrarCliente(informacionUsuario, informacionCliente);
+
+      if (!esRegistradoCorrectamente) {
+        return Conflict("Un usuario con el correo electrónico, o nombre de usuario, proveidos ya está registrado.");
+      }
+
+      return Accepted("Se ha registado correctamente.");
+    }
   }
 }
