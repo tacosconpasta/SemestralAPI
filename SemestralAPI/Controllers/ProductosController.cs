@@ -57,6 +57,27 @@ namespace SemestralAPIClone.Controllers {
       return Ok("Producto Insertado");
     }
 
+    private readonly BaseDatos _db;
 
+    public ProductosController() {
+      _db = new BaseDatos("Host=...");
+    }
+
+    [HttpPut]
+    public IActionResult EditarProducto([FromBody] EditarProductoRequest parametros) {
+      // 1. VALIDAR TOKEN
+      if (parametros.AuthToken != "12345") {
+        return Unauthorized(new { error = "AuthToken inválido" });
+      }
+
+      // 2. EDITAR PRODUCTO
+      var resultado = _db.EditarArticulo(parametros.Producto);
+
+      if (resultado == null) {
+        return BadRequest(new { error = "No se pudo actualizar el producto" });
+      }
+
+      return Ok(new { producto = resultado });
+    }
   }
 }

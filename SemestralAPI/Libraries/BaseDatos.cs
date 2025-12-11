@@ -19,11 +19,11 @@ namespace SemestralAPI.Libraries {
 
       _cmd.Connection = new NpgsqlConnection(_connectionString);
     }
-
-    //Constructor 2: Cadena de Conexión
     public BaseDatos(string connectionString) {
       _connectionString = connectionString;
+      _cmd.Connection = new NpgsqlConnection(_connectionString);
     }
+
 
     //Prueba Conexión
     public bool ProbarConexion() {
@@ -159,5 +159,37 @@ namespace SemestralAPI.Libraries {
 
       return cliente;
     }
+
+    public Articulo EditarArticulo(Articulo articulo) {
+      try {
+        _cmd.Parameters.Clear();
+
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText =
+            "UPDATE articulo SET nombre = @nombre, precio = @precio, stock = @stock, paga_itbms = @itbms " +
+            "WHERE id = @id";
+
+        _cmd.Parameters.AddWithValue("@id", articulo.Id);
+        _cmd.Parameters.AddWithValue("@nombre", articulo.Nombre);
+        _cmd.Parameters.AddWithValue("@precio", articulo.Precio);
+        _cmd.Parameters.AddWithValue("@stock", articulo.Stock);
+        _cmd.Parameters.AddWithValue("@itbms", articulo.Paga_itbms);
+
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        _cmd.ExecuteNonQuery();
+
+        return articulo;
+      } catch (Exception ex) {
+        Console.WriteLine("Error EditarArticulo: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+
   }
 }
