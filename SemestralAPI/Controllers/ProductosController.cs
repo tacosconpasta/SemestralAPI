@@ -33,22 +33,34 @@ namespace SemestralAPIClone.Controllers {
     //Al solicitar "GET" a la ruta "[controller]"
     [HttpGet]
     public ActionResult<List<Articulo>> ObtenerProductos() {
-      return Ok("ok");
-    }
+      if (!bd.ProbarConexion())
+        return StatusCode(500, "Error: No se pudo conectar a la base de datos.");
 
+      string query = "SELECT id, nombre, descripcion, precio, stock, paga_itbms FROM articulo;";
+
+      List<Articulo> lista = bd.LeerTabla<Articulo>(query);
+
+      return Ok(new {
+        producto = lista
+      });
+    }
 
 
     //Obtener Productos por Id
     //Al Solicitar "GET" a la ruta "/[controller]/producto_id"
-    [HttpGet("{id}")]
-    public ActionResult<Articulo> ObtenerProductoPorId(int id) {
-      if (bd.ProbarConexion()) {
-        return Ok("Se conectó a la BD bro");
-      } else {
-        return NotFound("No se conectó a NADA");
-      }
-    }
+    [HttpGet]
+    public ActionResult<List<Articulo>> ObtenerProductos() {
+      if (!bd.ProbarConexion())
+        return StatusCode(500, "Error: No se pudo conectar a la base de datos.");
 
+      string query = "SELECT id, nombre, descripcion, precio, stock, paga_itbms FROM articulo;";
+
+      List<Articulo> lista = bd.LeerTabla<Articulo>(query);
+
+      return Ok(new {
+        producto = lista
+      });
+    }
 
     //Insertar Producto
     //Al solicitar "POST" a la ruta "[controller]"
