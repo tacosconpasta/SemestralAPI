@@ -7,11 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Npgsql" Version="10.0.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <Compile Remove="RequestParams\Factura\**" />
+    <Content Remove="RequestParams\Factura\**" />
+    <EmbeddedResource Remove="RequestParams\Factura\**" />
+    <None Remove="RequestParams\Factura\**" />
   </ItemGroup>
 
   <ItemGroup>
-	 <Folder Include="RequestParams\Transacciones\" />
+    <PackageReference Include="Npgsql" Version="10.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 </Project>

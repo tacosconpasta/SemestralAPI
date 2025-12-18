@@ -1,9 +1,6 @@
 ﻿using Npgsql;
 using SemestralAPI.Models;
-using System.Collections.Generic;
 using System.Data;
-using System.Numerics;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SemestralAPI.Libraries {
   public class BaseDatos {
@@ -102,7 +99,7 @@ namespace SemestralAPI.Libraries {
     public bool RegistrarCliente(Usuario informacionUsuario, Cliente informacionCliente) {
       try {
         //Verificar si existe usuario
-        if (ExisteUsuario(informacionUsuario.User) || ExisteCliente(informacionCliente) )
+        if (ExisteUsuario(informacionUsuario.User) || ExisteCliente(informacionCliente))
           return false;
 
         //Limpiar parametros de anteriores querys
@@ -255,13 +252,12 @@ namespace SemestralAPI.Libraries {
 
         //Si existe registro, retornar cierto
         return true;
-      } catch (Exception ex) { 
+      } catch (Exception ex) {
         Console.Error.WriteLine(ex.Message);
-        return false; 
-      } 
-      finally { 
-        _cmd.Connection.Close(); 
-      } 
+        return false;
+      } finally {
+        _cmd.Connection.Close();
+      }
     }
 
     //Verifica si el cliente existe
@@ -621,25 +617,33 @@ namespace SemestralAPI.Libraries {
     //Editar Artículo
     public Articulo EditarArticulo(Articulo articulo) {
       try {
+        //Limpiar parametros anteriores
         _cmd.Parameters.Clear();
 
+        //Preparar query
         _cmd.CommandType = CommandType.Text;
         _cmd.CommandText =
-            "UPDATE articulo SET nombre = @nombre, precio = @precio, stock = @stock, paga_itbms = @itbms " +
+            "UPDATE articulo SET nombre = @nombre, descripcion = @descripcion, precio = @precio, stock = @stock, paga_itbms = @itbms " +
             "WHERE id = @id";
 
+        //Definir parametros
         _cmd.Parameters.AddWithValue("@id", articulo.Id);
         _cmd.Parameters.AddWithValue("@nombre", articulo.Nombre);
+        _cmd.Parameters.AddWithValue("@descripcion", articulo.Descripcion);
         _cmd.Parameters.AddWithValue("@precio", articulo.Precio);
         _cmd.Parameters.AddWithValue("@stock", articulo.Stock);
         _cmd.Parameters.AddWithValue("@itbms", articulo.Paga_itbms);
 
+        //Identificar si ya existe una conexión abierta
         if (_cmd.Connection.State != ConnectionState.Open)
           _cmd.Connection.Open();
 
-        _cmd.ExecuteNonQuery();
+        //Obtener filas
+        int rows = _cmd.ExecuteNonQuery();
 
-        return articulo;
+        //Si se devolvió más de 0 filas, osea, se updateo el artículo: Devolver el mismo artículo
+        //De lo contrario, devolver null
+        return rows > 0 ? articulo : null;
       } catch (Exception ex) {
         Console.WriteLine("Error EditarArticulo: " + ex.Message);
         return null;
@@ -648,5 +652,88 @@ namespace SemestralAPI.Libraries {
           _cmd.Connection.Close();
       }
     }
+
+    //Eliminar Artículo
+    public bool EliminarArticulo(int id) {
+      try {
+        //Limpiar parametros de querys anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar delete statement
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = "DELETE FROM articulo WHERE id = @id";
+        _cmd.Parameters.AddWithValue("@id", id);
+
+        //Si no existe uan conexión abierta, abrirla
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Obtenr filas
+        int rows = _cmd.ExecuteNonQuery();
+
+        //Devolver "cierto" si las filas afectadas son mayores a 0
+        return rows > 0;
+      } catch (Exception ex) {
+        Console.WriteLine("Error EliminarArticulo: " + ex.Message);
+        return false;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+
+    //Facturas
+
+    //Obtener Facturas
+    //Obtiene todas las facturas
+    public List<Factura> ObtenerFacturas() {
+      List<Factura> listaFacturas = new List<Factura>();
+
+      try {
+        //Limpiar parámetros anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = "SELECT id, cupon_id, subtotal, total, fecha, itbms, usuario_id FROM factura;";
+
+        //Abrir conexión si no está abierta
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Inicializar dataset
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+
+        //Ejecutar comando
+        adapter.SelectCommand = _cmd;
+
+        //Rellenar dataset
+        adapter.Fill(ds);
+
+        //Por cada fila, añadir una factura
+        foreach (DataRow row in ds.Tables[0].Rows) {
+          listaFacturas.Add(new Factura {
+            Id = Convert.ToInt32(row["id"]),
+            CuponId = row["cupon_id"] == DBNull.Value ? null : Convert.ToInt32(row["cupon_id"]),
+            Subtotal = float.Parse(row["subtotal"].ToString()!),
+            Total = float.Parse(row["total"].ToString()!),
+            Fecha = Convert.ToDateTime(row["fecha"]),
+            Itbms = float.Parse(row["itbms"].ToString()!),
+            UsuarioId = Convert.ToInt32(row["usuario_id"])
+          });
+        }
+
+        return listaFacturas;
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerFacturas: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
   }
 }
