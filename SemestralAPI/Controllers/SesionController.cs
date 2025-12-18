@@ -75,5 +75,15 @@ namespace SemestralAPI.Controllers {
 
       return Accepted("Se ha registado correctamente.");
     }
+
+    [HttpGet("clientes/{id}")]
+    public ActionResult<Cliente> ObtenerClientePorId(int id) {
+      var cliente = _bd.BuscarCliente(id);
+
+      if (cliente == null)
+        return NotFound(new { mensaje = "No se encontró el cliente con ese ID." });
+
+      return Ok(cliente);
+    }
   }
 }

@@ -385,6 +385,240 @@ namespace SemestralAPI.Libraries {
       return cliente;
     }
 
+    //Busca un usuario por id
+    public Usuario BuscarUsuario(int usuario_id) {
+      //Limpiar parametros de anteriores querys
+      _cmd.Parameters.Clear();
+
+      //Construir sentencia
+      _cmd.CommandType = System.Data.CommandType.Text;
+      _cmd.CommandText = "SELECT id, usuario FROM usuario WHERE id = @usuario_id";
+      _cmd.Parameters.AddWithValue("@usuario_id", usuario_id);
+
+      //Abrir conexión
+      _cmd.Connection!.Open();
+
+      //Dataset y adapter
+      DataSet ds = new DataSet();
+      NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+
+      //Ejecutar query
+      adapter.SelectCommand = _cmd;
+
+      //Rellenar ds con datos
+      adapter.Fill(ds);
+
+      //Cerrar Conexión
+      _cmd.Connection.Close();
+
+      //Crear usuario a devolver
+      Usuario usuario = new Usuario();
+
+      //No se encontró usuario
+      if (ds.Tables[0].Rows.Count <= 0) {
+        return null;
+      }
+
+      //Asignar datos a usuario
+      usuario.User = ds.Tables[0].Rows[0]["usuario"].ToString();
+      usuario.Id = Convert.ToInt32(ds.Tables[0].Rows[0]["id"].ToString());
+
+      return usuario;
+    }
+
+
+    //Obtiene todos los artículos
+    public List<Articulo> ObtenerArticulos() {
+      List<Articulo> listaArticulos = new List<Articulo>();
+
+      try {
+        //Limpiar parámetros de querys anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = "SELECT id, nombre, descripcion, precio, stock, paga_itbms FROM articulo;";
+
+        //Si no hay una conexión abierta, abrirla
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Iniciarlizar dataset
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+
+        //Ejecutar comando
+        adapter.SelectCommand = _cmd;
+
+        //Rellenar dataset
+        adapter.Fill(ds);
+
+        //Por cada fila en dataset, añadir un artículo a la lista
+        foreach (DataRow row in ds.Tables[0].Rows) {
+          listaArticulos.Add(new Articulo {
+            Id = Convert.ToInt32(row["id"]),
+            Nombre = row["nombre"].ToString()!,
+            Descripcion = row["descripcion"].ToString()!,
+            Precio = float.Parse(row["precio"].ToString()!),
+            Stock = Convert.ToInt32(row["stock"]),
+            Paga_itbms = Convert.ToBoolean(row["paga_itbms"])
+          });
+        }
+
+        return listaArticulos;
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerArticulos: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+    //Obtener Artículo por ID
+    public Articulo ObtenerArticuloPorId(int id) {
+      try {
+        //Limpiar parametros de querys anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText =
+            "SELECT id, nombre, descripcion, precio, stock, paga_itbms " +
+            "FROM articulo WHERE id = @id;";
+        _cmd.Parameters.AddWithValue("@id", id);
+
+        //Identificar si ya existe una conexión abierta
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Declarar ds y adaptador
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+
+        //Ejecutar query
+        adapter.SelectCommand = _cmd;
+
+        //Rellenar dataset
+        adapter.Fill(ds);
+
+        //Si no existe ningún producto con ese id, devolver null
+        if (ds.Tables[0].Rows.Count == 0)
+          return null;
+
+        DataRow row = ds.Tables[0].Rows[0];
+
+        //Devolver un artículo
+        return new Articulo {
+          Id = Convert.ToInt32(row["id"]),
+          Nombre = row["nombre"].ToString(),
+          Descripcion = row["descripcion"].ToString(),
+          Precio = float.Parse(row["precio"].ToString()!),
+          Stock = Convert.ToInt32(row["stock"]),
+          Paga_itbms = Convert.ToBoolean(row["paga_itbms"])
+        };
+
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerArticuloPorId: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+    //Buscar Artículo por Nombre
+    public List<Articulo> BuscarArticulosPorNombre(string nombreParcial) {
+      List<Articulo> listaArticulos = new List<Articulo>();
+
+      try {
+        //Limpiar parámetros de queries anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText =
+            "SELECT id, nombre, descripcion, precio, stock, paga_itbms " +
+            "FROM articulo " +
+            "WHERE LOWER(nombre) LIKE LOWER(@nombre) " +
+            "ORDER BY nombre ASC;";
+
+        //Parametro LIKE con %
+        _cmd.Parameters.AddWithValue("@nombre", "%" + nombreParcial + "%");
+
+        //Abrir conexión si es necesario
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Inicializar dataset
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+
+        //Ejecutar comando
+        adapter.SelectCommand = _cmd;
+
+        //Rellenar dataset
+        adapter.Fill(ds);
+
+        //Por cada fila en dataset, añadir un artículo
+        foreach (DataRow row in ds.Tables[0].Rows) {
+          listaArticulos.Add(new Articulo {
+            Id = Convert.ToInt32(row["id"]),
+            Nombre = row["nombre"].ToString()!,
+            Descripcion = row["descripcion"].ToString()!,
+            Precio = float.Parse(row["precio"].ToString()!),
+            Stock = Convert.ToInt32(row["stock"]),
+            Paga_itbms = Convert.ToBoolean(row["paga_itbms"])
+          });
+        }
+
+        return listaArticulos;
+      } catch (Exception ex) {
+        Console.WriteLine("Error BuscarArticulosPorNombre: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+
+    //Crear Artículo
+    public Articulo CrearArticulo(Articulo articulo) {
+      try {
+        _cmd.Parameters.Clear();
+
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText =
+            "INSERT INTO articulo (nombre, descripcion, precio, stock, paga_itbms) " +
+            "VALUES (@nombre, @descripcion, @precio, @stock, @itbms) RETURNING id;";
+
+        _cmd.Parameters.AddWithValue("@nombre", articulo.Nombre);
+        _cmd.Parameters.AddWithValue("@descripcion", articulo.Descripcion);
+        _cmd.Parameters.AddWithValue("@precio", articulo.Precio);
+        _cmd.Parameters.AddWithValue("@stock", articulo.Stock);
+        _cmd.Parameters.AddWithValue("@itbms", articulo.Paga_itbms);
+
+        //Si NO hay una conexión abierta, abrirla
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Obtener ID por separado, para debuggear con mayor facilidad
+        var newId = _cmd.ExecuteScalar();
+        articulo.Id = Convert.ToInt32(newId);
+
+        //Retornar Artículo creado
+        return articulo;
+      } catch (Exception ex) {
+        Console.WriteLine("Error Crear al crear un articulo: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+    //Editar Artículo
     public Articulo EditarArticulo(Articulo articulo) {
       try {
         _cmd.Parameters.Clear();
