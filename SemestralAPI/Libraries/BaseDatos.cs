@@ -1,6 +1,7 @@
 ﻿using Npgsql;
 using SemestralAPI.Models;
 using System.Data;
+using System.Xml.Linq;
 
 namespace SemestralAPI.Libraries {
   public class BaseDatos {
@@ -674,16 +675,415 @@ namespace SemestralAPI.Libraries {
 
         //Por cada fila en dataset, añadir un artículo a la lista
         foreach (DataRow row in ds.Tables[0].Rows) {
-          listaCategorias.Add(new Categoria {
-            Id = Convert.ToInt32(row["id"]),
-            Nombre = row["nombre"].ToString()!,
-            CategoriaPadreId = Convert.ToInt32(row["categoria_padre_id"].ToString()),
-          });
+          string id = row["id"].ToString();
+          string name = row["nombre"].ToString()!;
+          string padreId = row["categoria_padre_id"].ToString();
+
+          //Si la categoría padre no existe
+          if (string.IsNullOrEmpty(padreId)) {
+            //Asignar null
+            listaCategorias.Add(new Categoria {
+              Id = Convert.ToInt32(id),
+              Nombre = name,
+              CategoriaPadreId = null,
+            });
+
+            //Asignar categorías padre si tiene
+          } else {
+            listaCategorias.Add(new Categoria {
+              Id = Convert.ToInt32(id),
+              Nombre = name,
+              CategoriaPadreId = Convert.ToInt32(padreId),
+            });
+
+          }
         }
 
         return listaCategorias;
       } catch (Exception ex) {
         Console.WriteLine("Error ObtenerArticulos: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+    //Obtener UNA categoría por ID 
+    public Categoria ObtenerCategoria(int categoriaABuscarId) {
+      try {
+        //Limpiar parámetros de querys anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = "SELECT id, nombre, categoria_padre_id FROM categoria WHERE id = @id;";
+        _cmd.Parameters.AddWithValue("@id", categoriaABuscarId);
+
+        //Si no hay una conexión abierta, abrirla
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Iniciarlizar dataset
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+
+        //Ejecutar comando
+        adapter.SelectCommand = _cmd;
+
+        //Rellenar dataset
+        adapter.Fill(ds);
+
+        //Si no existe ninguna categoría con ese id, devolver null
+        if (ds.Tables[0].Rows.Count == 0)
+          return null;
+
+        DataRow row = ds.Tables[0].Rows[0];
+        string id = row["id"].ToString();
+        string name = row["nombre"].ToString()!;
+        string padreId = row["categoria_padre_id"].ToString();
+
+        //Si la categoría padre no existe
+        if (string.IsNullOrEmpty(padreId)) {
+          //Devolver la categoria con categoriaPadre = null
+          return new Categoria {
+            Id = Convert.ToInt32(id),
+            Nombre = name,
+            CategoriaPadreId = null,
+          };
+        } else {
+          //Devolver la categoria con categoriaPadre
+          return new Categoria {
+            Id = Convert.ToInt32(id),
+            Nombre = name,
+            CategoriaPadreId = Convert.ToInt32(padreId),
+          };
+        }
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerArticulos: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+    //Obtener UNA categoría por UN nombre
+    public Categoria ObtenerCategoria(string nombre) {
+      List<Categoria> listaCategorias = new List<Categoria>();
+
+      try {
+        //Limpiar parámetros de querys anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = "SELECT id, nombre, categoria_padre_id FROM categoria WHERE nombre ILIKE @nombre;";
+        _cmd.Parameters.AddWithValue("@nombre", nombre);
+
+        //Si no hay una conexión abierta, abrirla
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Iniciarlizar dataset
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+
+        //Ejecutar comando
+        adapter.SelectCommand = _cmd;
+
+        //Rellenar dataset
+        adapter.Fill(ds);
+
+        //Si no existe ninguna categoría con ese id, devolver null
+        if (ds.Tables[0].Rows.Count == 0)
+          return null;
+
+        DataRow row = ds.Tables[0].Rows[0];
+        string id = row["id"].ToString();
+        string name = row["nombre"].ToString()!;
+        string padreId = row["categoria_padre_id"].ToString();
+
+        //Si la categoría padre no existe
+        if (string.IsNullOrEmpty(padreId)) {
+          //Devolver la categoria con categoriaPadre = null
+          return new Categoria {
+            Id = Convert.ToInt32(id),
+            Nombre = name,
+            CategoriaPadreId = null,
+          };
+        } else {
+          //Devolver la categoria con categoriaPadre
+          return new Categoria {
+            Id = Convert.ToInt32(id),
+            Nombre = name,
+            CategoriaPadreId = Convert.ToInt32(padreId),
+          };
+        }
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerArticulos: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+    //Buscar VARIAS categorias con instancias nombre
+    public List<Categoria> BuscarCategorias(string nombre) {
+      try {
+        //Limpiar parametros anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText =
+            "SELECT id, nombre, categoria_padre_id " +
+            "FROM categoria " +
+            "WHERE nombre ILIKE @nombre " +
+            "ORDER BY nombre";
+
+        _cmd.Parameters.AddWithValue("@nombre", "%" + nombre + "%");
+
+        //Abrir conexión si no existe
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Inicializar dataset y adapter
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+
+        //Ejecutar comando
+        adapter.SelectCommand = _cmd;
+
+        //Rellenar adapter
+        adapter.Fill(ds);
+
+        //Inicializar lista de categorias que hicieron match con el parámetro de búsqueda
+        List<Categoria> categorias = new List<Categoria>();
+
+        //Por cada resultado
+        foreach (DataRow row in ds.Tables[0].Rows) {
+          //Añadirlo a lista de categorias encontradas
+          categorias.Add(new Categoria {
+            Id = Convert.ToInt32(row["id"]),
+            Nombre = row["nombre"].ToString()!,
+            CategoriaPadreId = row["categoria_padre_id"] == DBNull.Value
+                ? 0
+                : Convert.ToInt32(row["categoria_padre_id"])
+          });
+        }
+
+        //Retornar categorías encontradas
+        return categorias;
+      } catch (Exception ex) {
+        Console.WriteLine("Error BuscarCategorias: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+
+    //Añadir una categoría
+    public bool AgregarCategoria(string nombreCategoria, int categoriaPadre) {
+      try {
+        //Limpiar parámetros de querys anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = @"
+          INSERT INTO categoria (nombre, categoria_padre_id)
+          VALUES (@nombre, @categoria_padre_id);
+        ";
+
+        //Asignar parámetros
+        _cmd.Parameters.AddWithValue("@nombre", nombreCategoria);
+
+        //Permitir NULL en categoria_padre_id
+        if (categoriaPadre > 0)
+          _cmd.Parameters.AddWithValue("@categoria_padre_id", categoriaPadre);
+        else
+          _cmd.Parameters.AddWithValue("@categoria_padre_id", DBNull.Value);
+
+        //Si no hay una conexión abierta, abrirla
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Ejecutar comando
+        _cmd.ExecuteNonQuery();
+
+        return true;
+      } catch (Exception ex) {
+        Console.WriteLine("Error al añadir categoria: " + ex.Message);
+        return false;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+    //Eliminar una categoría
+    public bool EliminarCategoria(int categoriaAEliminarId) {
+      try {
+        //Limpiar parametros de querys anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar delete statement
+        _cmd.CommandType = CommandType.Text;
+        
+        //El campo id es ON CASCADE, elimina AUTOMÁTICAMENTE a TODOS los hijos con ese ID y sucesivamente
+        _cmd.CommandText = "DELETE FROM categoria WHERE id = @id";
+        _cmd.Parameters.AddWithValue("@id", categoriaAEliminarId);
+
+        //Si no existe uan conexión abierta, abrirla
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Obtener filas
+        int rows = _cmd.ExecuteNonQuery();
+
+        //Devolver "cierto" si las filas afectadas son mayores a 0
+        return rows > 0;
+      } catch (Exception ex) {
+        Console.WriteLine("Error EliminarArticulo: " + ex.Message);
+        return false;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+    //Editar Categoría
+    public Categoria EditarCategoria(Categoria categoria) {
+      try {
+        //Limpiar parametros anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query base
+        _cmd.CommandType = CommandType.Text;
+
+        if (categoria.CategoriaPadreId == -1) {
+          //Eliminar categoría padre
+          _cmd.CommandText =
+              "UPDATE categoria SET nombre = @nombre, categoria_padre_id = NULL " +
+              "WHERE id = @id";
+        } else if (categoria.CategoriaPadreId > 0) {
+          //Actualizar categoría padre
+          _cmd.CommandText =
+              "UPDATE categoria SET nombre = @nombre, categoria_padre_id = @categoria_padre_id " +
+              "WHERE id = @id";
+
+          _cmd.Parameters.AddWithValue("@categoria_padre_id", categoria.CategoriaPadreId);
+        } else {
+          //No tocar categoría padre
+          _cmd.CommandText =
+              "UPDATE categoria SET nombre = @nombre " +
+              "WHERE id = @id";
+        }
+
+        //Parámetros comunes
+        _cmd.Parameters.AddWithValue("@id", categoria.Id);
+        _cmd.Parameters.AddWithValue("@nombre", categoria.Nombre);
+
+        //Identificar si ya existe una conexión abierta
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Ejecutar update
+        int rows = _cmd.ExecuteNonQuery();
+
+        return rows > 0 ? categoria : null;
+      } catch (Exception ex) {
+        Console.WriteLine("Error EditarCategoria: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+    //Obtener Categoría con hijos (Recursivo)
+    public CategoriaArbol ObtenerCategoriaArbol(int categoriaId) {
+      try {
+        //Limpiar parámetros de querys anteriores
+        _cmd.Parameters.Clear();
+
+        //Construir Query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = @"
+            WITH RECURSIVE categorias_arbol AS (
+              SELECT id, nombre, categoria_padre_id
+               FROM categoria
+              WHERE id = @id
+
+              UNION ALL
+
+              SELECT c.id, c.nombre, c.categoria_padre_id
+              FROM categoria c
+              INNER JOIN categorias_arbol ca
+                ON c.categoria_padre_id = ca.id
+              )
+            SELECT id, nombre, categoria_padre_id
+            FROM categorias_arbol;
+          ";
+        _cmd.Parameters.AddWithValue("@id", categoriaId);
+
+        //Abir conexión si está cerrada
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Inicializar dataset y adapter
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+
+        //Ejecutar comando
+        adapter.SelectCommand = _cmd;
+
+        //Rellenar dataset
+        adapter.Fill(ds);
+
+        //Si no se seleccionó nada
+        if (ds.Tables[0].Rows.Count == 0)
+          return null;
+
+        //Crear diccionario para armar el árbol
+        Dictionary<int, CategoriaArbol> categorias = new();
+
+        foreach (DataRow row in ds.Tables[0].Rows) {
+          int id = Convert.ToInt32(row["id"]);
+
+          categorias[id] = new CategoriaArbol {
+            Id = id,
+            Nombre = row["nombre"].ToString()!
+          };
+        }
+
+        CategoriaArbol raiz = null;
+
+        foreach (DataRow row in ds.Tables[0].Rows) {
+          int id = Convert.ToInt32(row["id"]);
+          object padreObj = row["categoria_padre_id"];
+
+          //Si la categoria actual no tiene padre
+          if (padreObj == DBNull.Value) {
+            raiz = categorias[id];
+
+          //Si tiene padre
+          } else {
+            //Parsear
+            int padreId = Convert.ToInt32(padreObj.ToString());
+
+            if (categorias.ContainsKey(padreId))
+              categorias[padreId].Hijos.Add(categorias[id]);
+          }
+        }
+
+        return raiz;
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerCategoriaArbol: " + ex.Message);
         return null;
       } finally {
         if (_cmd.Connection.State != ConnectionState.Closed)

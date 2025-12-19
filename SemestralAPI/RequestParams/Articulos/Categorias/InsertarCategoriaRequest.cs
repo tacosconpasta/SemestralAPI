@@ -7,6 +7,6 @@ namespace SemestralAPI.RequestParams.Articulos.Categorias {
     public string Nombre { get; set; } = string.Empty;
 
     // Puede ser null si es categoría raíz
-    public int? CategoriaPadreId { get; set; }
+    public int CategoriaPadreId { get; set; }
   }
 }
