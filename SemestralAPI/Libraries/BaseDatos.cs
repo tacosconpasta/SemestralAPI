@@ -47,6 +47,8 @@ namespace SemestralAPI.Libraries {
       }
     }
 
+    //***USUARIO-CLIENTE***//
+
     //Inserta un usuario, funciona para clientes y administradores
     public bool RegistrarUsuario(Usuario usuarioRegistrar) {
       try {
@@ -424,6 +426,8 @@ namespace SemestralAPI.Libraries {
       return usuario;
     }
 
+
+
     //***ARTÍCULOS***//
 
     //Obtiene todos los artículos
@@ -685,6 +689,7 @@ namespace SemestralAPI.Libraries {
     }
 
 
+
     //***CATEGORÍAS***//
 
     //Obtener TODAS las categorías
@@ -748,61 +753,6 @@ namespace SemestralAPI.Libraries {
         return null;
       } finally {
         //Si la conexión no fue cerrada, cerrar
-        if (_cmd.Connection.State != ConnectionState.Closed)
-          _cmd.Connection.Close();
-      }
-    }
-    
- 
-
-    //***FACTURAS***//
-
-    //Obtener Facturas
-    public List<Factura> ObtenerFacturas() {
-      List<Factura> listaFacturas = new List<Factura>();
-
-      try {
-        //Limpiar parámetros anteriores
-        _cmd.Parameters.Clear();
-
-        //Preparar query
-        _cmd.CommandType = CommandType.Text;
-        _cmd.CommandText = "SELECT id, cupon_id, subtotal, total, fecha, itbms, usuario_id FROM factura;";
-
-        //Abrir conexión si no está abierta
-        if (_cmd.Connection.State != ConnectionState.Open)
-          _cmd.Connection.Open();
-
-        //Inicializar dataset
-        DataSet ds = new DataSet();
-        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
-
-        //Ejecutar comando
-        adapter.SelectCommand = _cmd;
-
-        //Rellenar dataset
-        adapter.Fill(ds);
-
-        _cmd.Connection.Close();
-
-        //Por cada fila, añadir una factura
-        foreach (DataRow row in ds.Tables[0].Rows) {
-          listaFacturas.Add(new Factura {
-            Id = Convert.ToInt32(row["id"]),
-            CuponId = row["cupon_id"] == DBNull.Value ? null : Convert.ToInt32(row["cupon_id"]),
-            Subtotal = float.Parse(row["subtotal"].ToString()!),
-            Total = float.Parse(row["total"].ToString()!),
-            Fecha = Convert.ToDateTime(row["fecha"]),
-            Itbms = float.Parse(row["itbms"].ToString()!),
-            UsuarioId = Convert.ToInt32(row["usuario_id"])
-          });
-        }
-
-        return listaFacturas;
-      } catch (Exception ex) {
-        Console.WriteLine("Error al obtener facturas: " + ex.Message);
-        return null;
-      } finally {
         if (_cmd.Connection.State != ConnectionState.Closed)
           _cmd.Connection.Close();
       }
@@ -1032,7 +982,7 @@ namespace SemestralAPI.Libraries {
 
         //Preparar delete statement
         _cmd.CommandType = CommandType.Text;
-        
+
         //El campo id es ON CASCADE, elimina AUTOMÁTICAMENTE a TODOS los hijos con ese ID y sucesivamente
         _cmd.CommandText = "DELETE FROM categoria WHERE id = @id";
         _cmd.Parameters.AddWithValue("@id", categoriaAEliminarId);
@@ -1170,7 +1120,7 @@ namespace SemestralAPI.Libraries {
           if (padreObj == DBNull.Value) {
             raiz = categorias[id];
 
-          //Si tiene padre
+            //Si tiene padre
           } else {
             //Parsear
             int padreId = Convert.ToInt32(padreObj.ToString());
@@ -1190,5 +1140,146 @@ namespace SemestralAPI.Libraries {
       }
     }
 
+
+
+
+    //***CUPONES***//
+    public List<Cupon> ObtenerCupones() {
+      List<Cupon> lista = new List<Cupon>();
+
+      try {
+        _cmd.Parameters.Clear();
+
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = "SELECT id, codigo, descuento, estado FROM cupon ORDER BY id";
+
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+        adapter.SelectCommand = _cmd;
+        adapter.Fill(ds);
+
+        foreach (DataRow row in ds.Tables[0].Rows) {
+          lista.Add(new Cupon {
+            Id = Convert.ToInt32(row["id"]),
+            Codigo = row["codigo"].ToString()!,
+            Descuento = Convert.ToDecimal(row["descuento"]),
+            Estado = Convert.ToBoolean(row["estado"])
+          });
+        }
+
+        return lista;
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerCupones: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+    public Cupon ObtenerCuponPorCodigo(string codigo) {
+      try {
+        //Limpiar parametros de querys anteriores
+        _cmd.Parameters.Clear();
+
+        //Contruir query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText =
+            "SELECT id, codigo, descuento, estado " +
+            "FROM cupon WHERE codigo = @codigo";
+
+        _cmd.Parameters.AddWithValue("@codigo", codigo);
+
+        //Abrir conexion si está cerrada
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Iniicalizar dataset y ejecutar consulta
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+        adapter.SelectCommand = _cmd;
+        adapter.Fill(ds);
+
+        //Si no se encontró ninguno, retornar null
+        if (ds.Tables[0].Rows.Count == 0)
+          return null;
+
+        DataRow row = ds.Tables[0].Rows[0];
+
+        //De lo contrario, devolver el encontrado
+        return new Cupon {
+          Id = Convert.ToInt32(row["id"]),
+          Codigo = row["codigo"].ToString()!,
+          Descuento = Convert.ToDecimal(row["descuento"]),
+          Estado = Convert.ToBoolean(row["estado"])
+        };
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerCuponPorCodigo: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+
+
+
+
+    //***FACTURAS***//
+
+    //Obtener Facturas
+    public List<Factura> ObtenerFacturas() {
+      List<Factura> listaFacturas = new List<Factura>();
+
+      try {
+        //Limpiar parámetros anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = "SELECT id, cupon_id, subtotal, total, fecha, itbms, usuario_id FROM factura;";
+
+        //Abrir conexión si no está abierta
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Inicializar dataset
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+
+        //Ejecutar comando
+        adapter.SelectCommand = _cmd;
+
+        //Rellenar dataset
+        adapter.Fill(ds);
+
+        _cmd.Connection.Close();
+
+        //Por cada fila, añadir una factura
+        foreach (DataRow row in ds.Tables[0].Rows) {
+          listaFacturas.Add(new Factura {
+            Id = Convert.ToInt32(row["id"]),
+            CuponId = row["cupon_id"] == DBNull.Value ? null : Convert.ToInt32(row["cupon_id"]),
+            Subtotal = float.Parse(row["subtotal"].ToString()!),
+            Total = float.Parse(row["total"].ToString()!),
+            Fecha = Convert.ToDateTime(row["fecha"]),
+            Itbms = float.Parse(row["itbms"].ToString()!),
+            UsuarioId = Convert.ToInt32(row["usuario_id"])
+          });
+        }
+
+        return listaFacturas;
+      } catch (Exception ex) {
+        Console.WriteLine("Error al obtener facturas: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
   }
 }
