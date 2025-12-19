@@ -344,7 +344,7 @@ namespace SemestralAPI.Libraries {
 
       //Construir sentencia
       _cmd.CommandType = System.Data.CommandType.Text;
-      _cmd.CommandText = "SELECT nombre, apellido, telefono, correo, direccion FROM cliente WHERE id = @cliente_id";
+      _cmd.CommandText = "SELECT id, nombre, apellido, telefono, correo, direccion FROM cliente WHERE id = @cliente_id";
       _cmd.Parameters.AddWithValue("@cliente_id", cliente_id);
 
       //Abrir conexión
@@ -372,6 +372,7 @@ namespace SemestralAPI.Libraries {
       }
 
       //Asignar datos a cliente
+      cliente.Id = Convert.ToInt32(ds.Tables[0].Rows[0]["id"].ToString());
       cliente.Nombre = ds.Tables[0].Rows[0]["nombre"].ToString();
       cliente.Apellido = ds.Tables[0].Rows[0]["apellido"].ToString();
       cliente.Telefono = ds.Tables[0].Rows[0]["telefono"].ToString();
