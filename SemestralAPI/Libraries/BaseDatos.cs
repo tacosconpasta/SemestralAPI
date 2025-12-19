@@ -423,6 +423,7 @@ namespace SemestralAPI.Libraries {
       return usuario;
     }
 
+    //***ARTÍCULOS***//
 
     //Obtiene todos los artículos
     public List<Articulo> ObtenerArticulos() {
@@ -579,7 +580,6 @@ namespace SemestralAPI.Libraries {
       }
     }
 
-
     //Crear Artículo
     public Articulo CrearArticulo(Articulo articulo) {
       try {
@@ -684,10 +684,62 @@ namespace SemestralAPI.Libraries {
     }
 
 
-    //Facturas
+    //***CATEGORÍAS***//
+
+    //Obtener TODAS las categorías
+    public List<Categoria> ObtenerCategorias() {
+      List<Categoria> listaCategorias = new List<Categoria>();
+
+      try {
+        //Limpiar parámetros anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = "SELECT id, nombre, categoria_padre_id FROM categoria;";
+
+        //Abrir conexión si no está abierta
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Inicializar dataset
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+
+        //Ejecutar comando
+        adapter.SelectCommand = _cmd;
+
+        //Rellenar dataset
+        adapter.Fill(ds);
+
+        //Cerrar Conexión
+        _cmd.Connection.Close();
+
+        //Por cada fila en dataset, añadir un artículo a la lista
+        foreach (DataRow row in ds.Tables[0].Rows) {
+          listaCategorias.Add(new Categoria {
+            Id = Convert.ToInt32(row["id"]),
+            Nombre = row["nombre"].ToString()!,
+            CategoriaPadreId = Convert.ToInt32(row["categoria_padre_id"].ToString()),
+          });
+        }
+
+        return listaCategorias;
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerArticulos: " + ex.Message);
+        return null;
+      } finally {
+        //Si la conexión no fue cerrada, cerrar
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+    
+ 
+
+    //***FACTURAS***//
 
     //Obtener Facturas
-    //Obtiene todas las facturas
     public List<Factura> ObtenerFacturas() {
       List<Factura> listaFacturas = new List<Factura>();
 
@@ -713,6 +765,8 @@ namespace SemestralAPI.Libraries {
         //Rellenar dataset
         adapter.Fill(ds);
 
+        _cmd.Connection.Close();
+
         //Por cada fila, añadir una factura
         foreach (DataRow row in ds.Tables[0].Rows) {
           listaFacturas.Add(new Factura {
@@ -728,7 +782,7 @@ namespace SemestralAPI.Libraries {
 
         return listaFacturas;
       } catch (Exception ex) {
-        Console.WriteLine("Error ObtenerFacturas: " + ex.Message);
+        Console.WriteLine("Error al obtener facturas: " + ex.Message);
         return null;
       } finally {
         if (_cmd.Connection.State != ConnectionState.Closed)
