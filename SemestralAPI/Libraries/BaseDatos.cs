@@ -381,6 +381,10 @@ namespace SemestralAPI.Libraries {
       return cliente;
     }
 
+
+
+    //***ARTÍCULOS***//
+
     //Obtiene todos los artículos
     public List<Articulo> ObtenerArticulos() {
       List<Articulo> listaArticulos = new List<Articulo>();
@@ -536,7 +540,6 @@ namespace SemestralAPI.Libraries {
       }
     }
 
-
     //Crear Artículo
     public Articulo CrearArticulo(Articulo articulo) {
       try {
@@ -640,6 +643,53 @@ namespace SemestralAPI.Libraries {
       }
     }
 
+
+    //***CATEGORÍAS***//
+
+    //Obtener TODAS las categorías
+    public List<Categoria> ObtenerCategorias() {
+      List<Categoria> listaCategorias = new List<Categoria>();
+
+      try {
+        //Limpiar parámetros de querys anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = "SELECT id, nombre, categoria_padre_id FROM categoria;";
+
+        //Si no hay una conexión abierta, abrirla
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Iniciarlizar dataset
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+
+        //Ejecutar comando
+        adapter.SelectCommand = _cmd;
+
+        //Rellenar dataset
+        adapter.Fill(ds);
+
+        //Por cada fila en dataset, añadir un artículo a la lista
+        foreach (DataRow row in ds.Tables[0].Rows) {
+          listaCategorias.Add(new Categoria {
+            Id = Convert.ToInt32(row["id"]),
+            Nombre = row["nombre"].ToString()!,
+            CategoriaPadreId = Convert.ToInt32(row["categoria_padre_id"].ToString()),
+          });
+        }
+
+        return listaCategorias;
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerArticulos: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
 
   }
 }
