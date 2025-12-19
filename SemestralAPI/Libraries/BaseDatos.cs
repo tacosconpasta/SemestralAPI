@@ -1226,7 +1226,327 @@ namespace SemestralAPI.Libraries {
     }
 
 
+    //***ORDENES***//
 
+    //Obtener INFORMACIÓN de Carrito (No el carrito)
+    public Orden ObtenerOrdenEnProceso(int usuarioId) {
+      try {
+        //Limpiar parámetros anteriores
+        _cmd.Parameters.Clear();
+
+        //Construir query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText =
+            "SELECT id, estado, fecha, usuario_id, cupon_id, subtotal, total " +
+            "FROM orden " +
+            "WHERE usuario_id = @usuario_id AND estado = 'proceso'";
+
+        //Definir parámetros
+        _cmd.Parameters.AddWithValue("@usuario_id", usuarioId);
+
+        //Abrir conexión si no está abierta
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Dataset
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+        adapter.SelectCommand = _cmd;
+        adapter.Fill(ds);
+
+        //Si no hay orden en proceso
+        if (ds.Tables[0].Rows.Count == 0)
+          return null;
+
+        DataRow row = ds.Tables[0].Rows[0];
+
+        //Retornar Orden en proceso
+        return new Orden {
+          Id = Convert.ToInt32(row["id"]),
+          Estado = row["estado"].ToString()!,
+          Fecha = Convert.ToDateTime(row["fecha"]),
+          Usuario_Id = Convert.ToInt32(row["usuario_id"]),
+          Cupon_Id = row["cupon_id"] == DBNull.Value
+              ? (int?) null
+              : Convert.ToInt32(row["cupon_id"]),
+          Subtotal = Convert.ToDecimal(row["subtotal"]),
+          Total = Convert.ToDecimal(row["total"])
+        };
+
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerOrdenEnProceso: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+    //Iniciar Orden vacía, sólo se necesita usuario a asociar
+    public int CrearOrden(int usuarioId) {
+      try {
+        //Limpiar parámetros anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText =
+            "INSERT INTO orden (estado, fecha, usuario_id, subtotal, total) " +
+            "VALUES ('procesando', NOW(), @usuario_id, 0, 0) " +
+            "RETURNING id";
+
+        //Definir parámetros
+        _cmd.Parameters.AddWithValue("@usuario_id", usuarioId);
+
+        //Abrir conexión si no está abierta
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Ejecutar y obtener id
+        object result = _cmd.ExecuteScalar();
+
+        //Si el resultado no es válido, osea, no se creo nada
+        if (result == null)
+          return -1;
+
+        //Si el resultado es válido
+        return Convert.ToInt32(result);
+      } catch (Exception ex) {
+        Console.WriteLine("Error CrearOrden: " + ex.Message);
+        return -1;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+    //Carritos
+    //Obtener el carrito en base a orden Id
+    public List<Orden_Detalle> ObtenerDetallesOrden(int ordenId) {
+      List<Orden_Detalle> lista = new List<Orden_Detalle>();
+
+      try {
+        //Limpiar parámetros anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText =
+            "SELECT id, orden_id, articulo_id, cantidad, precio_final " +
+            "FROM orden_detalle " +
+            "WHERE orden_id = @orden_id " +
+            "ORDER BY id";
+
+        //Definir parámetros
+        _cmd.Parameters.AddWithValue("@orden_id", ordenId);
+
+        //Abrir conexión si no está abierta
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Dataset
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+        adapter.SelectCommand = _cmd;
+        adapter.Fill(ds);
+
+        //Recorrer resultados
+        foreach (DataRow row in ds.Tables[0].Rows) {
+          lista.Add(new Orden_Detalle {
+            Id = Convert.ToInt32(row["id"]),
+            Orden_Id = Convert.ToInt32(row["orden_id"]),
+            Articulo_Id = Convert.ToInt32(row["articulo_id"]),
+            Cantidad = Convert.ToInt32(row["cantidad"]),
+            Precio_Final = Convert.ToDecimal(row["precio_final"])
+          });
+        }
+
+        return lista;
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerDetallesOrden: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+    //Agrega un artículo al carrito
+    public bool AgregarArticuloOrden(int ordenId, int articuloId, int cantidad) {
+      try {
+        _cmd.Parameters.Clear();
+        _cmd.CommandType = CommandType.Text;
+
+        //Obtener precio del artículo a insertar
+        _cmd.CommandText = "SELECT precio FROM articulo WHERE id = @articulo_id";
+        _cmd.Parameters.AddWithValue("@articulo_id", articuloId);
+
+        //Abrir conexion si está cerrada
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Ejecutar query sobre precioObj
+        object precioObj = _cmd.ExecuteScalar();
+        if (precioObj == null)
+          return false;
+
+        //Convertir el precio obtenido en valor válido
+        decimal precioFinal = Convert.ToDecimal(precioObj);
+
+        //Construir INSERT (dispara trigger)
+        _cmd.Parameters.Clear();
+        _cmd.CommandText = @"
+          INSERT INTO orden_detalle (orden_id, articulo_id, cantidad, precio_final)
+          VALUES (@orden_id, @articulo_id, @cantidad, @precio_final);
+         ";
+        _cmd.Parameters.AddWithValue("@orden_id", ordenId);
+        _cmd.Parameters.AddWithValue("@articulo_id", articuloId);
+        _cmd.Parameters.AddWithValue("@cantidad", cantidad);
+        _cmd.Parameters.AddWithValue("@precio_final", precioFinal);
+
+        _cmd.ExecuteNonQuery();
+        return true;
+      } catch (PostgresException ex) {
+        //Stock insuficiente (trigger)
+        if (ex.SqlState == "P0002")
+          throw;
+
+        //Artículo ya existe en orden; sumar cantidad
+        if (ex.SqlState == "23505") {
+          _cmd.Parameters.Clear();
+          _cmd.CommandText = @"
+            UPDATE orden_detalle
+            SET cantidad = cantidad + @cantidad
+            WHERE orden_id = @orden_id AND articulo_id = @articulo_id;
+          ";
+
+          _cmd.Parameters.AddWithValue("@cantidad", cantidad);
+          _cmd.Parameters.AddWithValue("@orden_id", ordenId);
+          _cmd.Parameters.AddWithValue("@articulo_id", articuloId);
+
+          _cmd.ExecuteNonQuery();
+          return true;
+        }
+
+        throw;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+    //Eliminar artículo del carrito
+    public bool EliminarArticuloOrden(int ordenId, int articuloId) {
+      try {
+        //Limpiar parámetros anteriores
+        _cmd.Parameters.Clear();
+
+        //Verificar si existe la relación
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText =
+            "SELECT id " +
+            "FROM orden_detalle " +
+            "WHERE orden_id = @orden_id AND articulo_id = @articulo_id";
+        _cmd.Parameters.AddWithValue("@orden_id", ordenId);
+        _cmd.Parameters.AddWithValue("@articulo_id", articuloId);
+
+        //Abrir conexión si está cerrada
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Inicializar dataset y obtener datos con adapter
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+        adapter.SelectCommand = _cmd;
+        adapter.Fill(ds);
+
+        //Si no existe la relación, retornar falso (no se eliminó nada)
+        if (ds.Tables[0].Rows.Count == 0)
+          return false;
+
+        //Eliminar artículo de carrito
+        _cmd.Parameters.Clear();
+        _cmd.CommandText =
+            "DELETE FROM orden_detalle " +
+            "WHERE orden_id = @orden_id AND articulo_id = @articulo_id";
+        _cmd.Parameters.AddWithValue("@orden_id", ordenId);
+        _cmd.Parameters.AddWithValue("@articulo_id", articuloId);
+
+        //Ejecutar DELETE
+        int rows = _cmd.ExecuteNonQuery();
+
+        //Retornar true, si las filas del DELETE son 1 o más
+        return rows > 0;
+      } catch (Exception ex) {
+        Console.WriteLine("Error EliminarArticuloOrden: " + ex.Message);
+        return false;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+    //Actualizar cantidad de un artículo en el carrito
+    public bool ActualizarArticuloOrden(int ordenId, int articuloId, int nuevaCantidad) {
+      try {
+        //Limpiar parámetros anteriores
+        _cmd.Parameters.Clear();
+
+        //Query para veerificar si existe ya la relación en el carrito
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText =
+            "SELECT cantidad " +
+            "FROM orden_detalle " +
+            "WHERE orden_id = @orden_id AND articulo_id = @articulo_id";
+        _cmd.Parameters.AddWithValue("@orden_id", ordenId);
+        _cmd.Parameters.AddWithValue("@articulo_id", articuloId);
+
+        //Abrir conexión si está cerrada
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Inicializar dataset y obtener datos con adapter
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+        adapter.SelectCommand = _cmd;
+        adapter.Fill(ds);
+
+        //Si no existe la relación, retornar falso (no se puede actualizar algo que no existe)
+        if (ds.Tables[0].Rows.Count == 0)
+          return false;
+
+        //Actualizar la cantidad
+        _cmd.Parameters.Clear();
+        _cmd.CommandText =
+            "UPDATE orden_detalle " +
+            "SET cantidad = @cantidad " +
+            "WHERE orden_id = @orden_id AND articulo_id = @articulo_id";
+        _cmd.Parameters.AddWithValue("@cantidad", nuevaCantidad);
+        _cmd.Parameters.AddWithValue("@orden_id", ordenId);
+        _cmd.Parameters.AddWithValue("@articulo_id", articuloId);
+
+        //Obtener filas modificadas
+        int rows = _cmd.ExecuteNonQuery();
+
+        //Retornar cierto si se modificó 1 o más filas
+        return rows > 0;
+      } catch (PostgresException ex) {
+        //Errores del trigger
+        if (ex.SqlState == "P0002") // STOCK_INSUFICIENTE
+          throw;
+
+        Console.WriteLine("Error ActualizarArticuloOrden: " + ex.Message);
+        return false;
+
+      } catch (Exception ex) {
+        Console.WriteLine("Error ActualizarArticuloOrden: " + ex.Message);
+        return false;
+
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
 
 
     //***FACTURAS***//
