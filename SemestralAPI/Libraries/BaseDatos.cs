@@ -436,7 +436,7 @@ namespace SemestralAPI.Libraries {
 
         //Preparar query
         _cmd.CommandType = CommandType.Text;
-        _cmd.CommandText = "SELECT id, nombre, descripcion, precio, stock, paga_itbms FROM articulo;";
+        _cmd.CommandText = "SELECT id, nombre, descripcion, precio, stock, paga_itbms FROM articulo ORDER BY id;";
 
         //Si no hay una conexión abierta, abrirla
         if (_cmd.Connection.State != ConnectionState.Open)
