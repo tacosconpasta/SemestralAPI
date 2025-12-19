@@ -717,11 +717,28 @@ namespace SemestralAPI.Libraries {
 
         //Por cada fila en dataset, añadir un artículo a la lista
         foreach (DataRow row in ds.Tables[0].Rows) {
-          listaCategorias.Add(new Categoria {
-            Id = Convert.ToInt32(row["id"]),
-            Nombre = row["nombre"].ToString()!,
-            CategoriaPadreId = Convert.ToInt32(row["categoria_padre_id"].ToString()),
-          });
+          string id = row["id"].ToString();
+          string name = row["nombre"].ToString()!;
+          string padreId = row["categoria_padre_id"].ToString();
+
+          //Si la categoría padre no existe
+          if (string.IsNullOrEmpty(padreId)) {
+            //Asignar null
+            listaCategorias.Add(new Categoria {
+              Id = Convert.ToInt32(id),
+              Nombre = name,
+              CategoriaPadreId = null,
+            });
+
+            //Asignar categorías padre si tiene
+          } else {
+            listaCategorias.Add(new Categoria {
+              Id = Convert.ToInt32(id),
+              Nombre = name,
+              CategoriaPadreId = Convert.ToInt32(padreId),
+            });
+
+          }
         }
 
         return listaCategorias;
