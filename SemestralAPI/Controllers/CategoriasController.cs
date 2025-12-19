@@ -112,7 +112,7 @@ namespace SemestralAPI.Controllers {
       }
     }
 
-    [HttpDelete]
+    [HttpDelete("{categoria_id:int}")]
     public ActionResult EliminarCategoria(int categoria_id) {
       if (categoria_id <= 0)
         return BadRequest("Por favor, enviar un id válido para la categoría a eliminar.");
