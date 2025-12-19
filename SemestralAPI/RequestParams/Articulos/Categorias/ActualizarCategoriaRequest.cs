@@ -2,6 +2,7 @@
 
 namespace SemestralAPI.RequestParams.Articulos.Categorias {
   public class ActualizarCategoriaRequest {
+    [Required]
     [StringLength(150)]
     public string? Nombre { get; set; }
 
