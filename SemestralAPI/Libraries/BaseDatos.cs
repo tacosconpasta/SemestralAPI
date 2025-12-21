@@ -1320,7 +1320,9 @@ namespace SemestralAPI.Libraries {
       }
     }
 
-    //Carritos
+
+
+    //***CARRITOS***//
     //Obtener el carrito en base a orden Id
     public List<Orden_Detalle> ObtenerDetallesOrden(int ordenId) {
       List<Orden_Detalle> lista = new List<Orden_Detalle>();
@@ -1374,6 +1376,7 @@ namespace SemestralAPI.Libraries {
     //Agrega un artículo al carrito
     public bool AgregarArticuloOrden(int ordenId, int articuloId, int cantidad) {
       try {
+        //Limpiar parámetros de query anterior
         _cmd.Parameters.Clear();
         _cmd.CommandType = CommandType.Text;
 
@@ -1392,6 +1395,7 @@ namespace SemestralAPI.Libraries {
 
         //Convertir el precio obtenido en valor válido
         decimal precioFinal = Convert.ToDecimal(precioObj);
+        precioFinal = precioFinal * cantidad;
 
         //Construir INSERT (dispara trigger)
         _cmd.Parameters.Clear();
@@ -1416,7 +1420,8 @@ namespace SemestralAPI.Libraries {
           _cmd.Parameters.Clear();
           _cmd.CommandText = @"
             UPDATE orden_detalle
-            SET cantidad = cantidad + @cantidad
+            SET cantidad = cantidad + @cantidad,
+            precio_final = precio_final + @precio_final
             WHERE orden_id = @orden_id AND articulo_id = @articulo_id;
           ";
 
@@ -1547,6 +1552,36 @@ namespace SemestralAPI.Libraries {
           _cmd.Connection.Close();
       }
     }
+
+
+    //***FOTOS***//
+    public Foto AgregarFoto(Foto fotoAInsertar) {
+      try {
+        //Limpiar parámetros de query anterior
+        _cmd.Parameters.Clear();
+
+        //Construir Query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = "INSERT INTO foto VALUES(@foto, @articulo_id)";
+        _cmd.Parameters.AddWithValue("@foto", fotoAInsertar.FotoPrincipal);
+        _cmd.Parameters.AddWithValue("@articulo_id", fotoAInsertar.ArticuloId);
+
+        //Abrir conexion si está cerrada
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Obtener ID por separado, para debuggear con mayor facilidad
+        var newId = _cmd.ExecuteScalar();
+        fotoAInsertar.Id = Convert.ToInt32(newId);
+
+        return fotoAInsertar;
+      } catch (Exception e) {
+        Console.Error.WriteLine("Ocurrió un error AgregarFoto: " + e.Message);
+        return null;
+
+      }
+    }
+
 
 
     //***FACTURAS***//
