@@ -688,6 +688,97 @@ namespace SemestralAPI.Libraries {
       }
     }
 
+    //Filtrar artículos pertenecientes a categoría y a hijos de esta
+    public List<dynamic> ObtenerArticulosPorCategoriaRecursiva(int categoriaId) {
+      List<dynamic> articulos = new List<dynamic>();
+
+      try {
+        //Limpiar parametros de querys anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar Query recurisva
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = @"
+              WITH RECURSIVE categorias_filtradas AS (
+                SELECT id
+                FROM categoria
+                WHERE id = @categoria_id
+
+                UNION ALL
+
+                SELECT c.id
+                FROM categoria c
+                INNER JOIN categorias_filtradas cf
+                  ON c.categoria_padre_id = cf.id
+              )
+              SELECT
+                a.id AS articulo_id,
+                a.nombre AS articulo_nombre,
+                a.descripcion,
+                a.precio,
+                a.stock,
+                a.paga_itbms,
+                c.id AS categoria_id,
+                c.nombre AS categoria_nombre
+              FROM articulo a
+              INNER JOIN articulo_categoria ac ON ac.id_articulo = a.id
+              INNER JOIN categoria c ON c.id = ac.id_categoria
+              WHERE a.id IN (
+                SELECT ac2.id_articulo
+                FROM articulo_categoria ac2
+                WHERE ac2.id_categoria IN (SELECT id FROM categorias_filtradas)
+              )
+              ORDER BY a.nombre, c.nombre;
+            ";
+        _cmd.Parameters.AddWithValue("@categoria_id", categoriaId);
+
+        //Abrir conexión si está cerrada
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Inicializar dataset y rellenar adapter
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+        adapter.SelectCommand = _cmd;
+        adapter.Fill(ds);
+
+        //Mapear agrupando por artículo
+        foreach (DataRow row in ds.Tables[0].Rows) {
+          int articuloId = Convert.ToInt32(row["articulo_id"]);
+
+          var articulo = articulos.FirstOrDefault(a => a.Id == articuloId);
+
+          if (articulo == null) {
+            articulo = new {
+              Id = articuloId,
+              Nombre = row["articulo_nombre"].ToString(),
+              Descripcion = row["descripcion"].ToString(),
+              Precio = Convert.ToDecimal(row["precio"]),
+              Stock = Convert.ToInt32(row["stock"]),
+              PagaITBMS = Convert.ToBoolean(row["paga_itbms"]),
+              Categorias = new List<object>()
+            };
+            articulos.Add(articulo);
+          }
+
+          ((List<object>) articulo.Categorias).Add(new {
+            Id = Convert.ToInt32(row["categoria_id"]),
+            Nombre = row["categoria_nombre"].ToString()
+          });
+        }
+
+        return articulos;
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerArticulosPorCategoriaRecursiva: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+
+
 
 
     //***CATEGORÍAS***//

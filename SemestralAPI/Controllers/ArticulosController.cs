@@ -156,5 +156,35 @@ namespace SemestralAPI.Controllers {
         articulos = lista
       });
     }
+
+    //Filtrar artículo por categoría
+    [HttpGet("filtrar/{categoria_id:int}")]
+    public ActionResult FiltrarArticulosPorCategoria(int categoria_id) {
+
+      if (categoria_id <= 0)
+        return BadRequest(new { mensaje = "El id de la categoría debe ser válido." });
+
+      var categoria = bd.ObtenerCategoria(categoria_id);
+
+      if (categoria == null)
+        return NotFound(new { mensaje = "La categoría no existe." });
+
+      //Filtrar artículos
+      var articulos = bd.ObtenerArticulosPorCategoriaRecursiva(categoria_id);
+
+      if (articulos == null)
+        return StatusCode(500, "No se pudieron obtener los artículos.");
+
+      //Retornar objeto con información relevante para renderización por paginado
+      return Ok(new {
+        categoriaFiltro = new {
+          categoria.Id,
+          categoria.Nombre
+        },
+        total = articulos.Count,
+        articulos
+      });
+    }
+
   }
 }
