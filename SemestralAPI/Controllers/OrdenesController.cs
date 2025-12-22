@@ -137,6 +137,7 @@ namespace SemestralAPI.Controllers {
         return BadRequest(new { mensaje = "El id de la orden debe ser válido." });
 
       Orden orden = bd.ObtenerOrdenPorId(orden_id);
+
       if (orden == null)
         return NotFound(new { mensaje = "La orden no existe." });
 
