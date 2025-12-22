@@ -426,6 +426,66 @@ namespace SemestralAPI.Libraries {
       return usuario;
     }
 
+    //Buscar usuario de cliente mediante cliente_id
+    public Usuario BuscarUsuarioByClienteId(int cliente_id) {
+      try {
+        //Limpiar parámetros anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = @"
+              SELECT id, usuario, contrasena, rol, cliente_id
+              FROM usuario
+              WHERE cliente_id = @cliente_id
+                AND rol = 'cliente'
+              LIMIT 1;
+        ";
+
+        //Asignar parámetros
+        _cmd.Parameters.AddWithValue("@cliente_id", cliente_id);
+
+        //Abrir conexión si está cerrada
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Inicializar DataSet y Adapter
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+        adapter.SelectCommand = _cmd;
+
+        //Ejecutar query
+        adapter.Fill(ds);
+
+        //Si no hay resultados, retornar null
+        if (ds.Tables.Count == 0 || ds.Tables[0].Rows.Count == 0)
+          return null;
+
+        DataRow row = ds.Tables[0].Rows[0];
+
+        //Construir objeto Usuario
+        Usuario usuario = new Usuario {
+          Id = Convert.ToInt32(row["id"]),
+          User = row["usuario"].ToString(),
+          Contrasena = row["contrasena"].ToString(),
+          Rol = row["rol"].ToString(),
+          ClienteId = row["cliente_id"] == DBNull.Value
+                        ? null
+                        : Convert.ToInt32(row["cliente_id"])
+        };
+
+        return usuario;
+
+      } catch (Exception ex) {
+        Console.WriteLine("Error BuscarUsuario: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+
 
 
     //***ARTÍCULOS***//
@@ -1410,6 +1470,63 @@ namespace SemestralAPI.Libraries {
           _cmd.Connection.Close();
       }
     }
+
+    //Finalizar una orden (proceso -> revision)
+    public bool FinalizarOrden(int ordenId) {
+      try {
+        //Limpiar parámetros anteriores
+        _cmd.Parameters.Clear();
+
+        //Verificar estado actual de la orden
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText =
+            "SELECT estado " +
+            "FROM orden " +
+            "WHERE id = @orden_id";
+
+        _cmd.Parameters.AddWithValue("@orden_id", ordenId);
+
+        //Abrir conexión
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        object estadoObj = _cmd.ExecuteScalar();
+
+        //Si la orden no existe
+        if (estadoObj == null)
+          return false;
+
+        //Obtener estado actual
+        string estadoActual = estadoObj.ToString();
+
+        //Solo permitir transición desde 'proceso', osea que no se puede finalizar una orden cancelada
+        if (estadoActual != "proceso")
+          throw new InvalidOperationException("ESTADO_INVALIDO");
+
+        //UPDATE el estado
+        _cmd.Parameters.Clear();
+        _cmd.CommandText =
+            "UPDATE orden " +
+            "SET estado = 'revision' " +
+            "WHERE id = @orden_id";
+        _cmd.Parameters.AddWithValue("@orden_id", ordenId);
+
+        //Ejecutar query
+        int rows = _cmd.ExecuteNonQuery();
+
+        ///Retornar si afectó a más de 0 filas
+        return rows > 0;
+      } catch (InvalidOperationException) {
+        throw;
+      } catch (Exception ex) {
+        Console.WriteLine("Error FinalizarOrden: " + ex.Message);
+        return false;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
 
 
 

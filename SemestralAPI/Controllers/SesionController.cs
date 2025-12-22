@@ -27,26 +27,56 @@ namespace SemestralAPI.Controllers {
     //Especificar que el LoginRequest es de nuestro paquete y no del de Microsoft
     [HttpPost("login")]
     public ActionResult Login([FromBody] RequestParams.Sesion.LoginRequest request) {
-      var usuario = _bd.IniciarSesion(request.User.Trim(), request.Contrasena.Trim());
+
+      //Validar credenciales
+      if (request == null || string.IsNullOrWhiteSpace(request.User) || string.IsNullOrWhiteSpace(request.Contrasena)) {
+          return BadRequest("Credenciales inválidas.");
+      }
+
+      //Iniciar sesión
+      var resultado = _bd.IniciarSesion(
+        request.User.Trim(),
+        request.Contrasena.Trim()
+      );
 
       //Si no se econtró un usuario
-      if (usuario == null) {
+      if (resultado == null) {
         return NotFound("No se encontró ningún usuario con esas credenciales.");
       }
 
-      string json = JsonSerializer.Serialize(usuario);
-
       //Si se encontró un cliente
-      if (usuario.GetType() == typeof(Cliente)) {
-        return Ok(json);
+      if (resultado is Cliente cliente) {
+        //Buscar información de usuario asociada a este cliente
+        Usuario usuarioCliente = _bd.BuscarUsuarioByClienteId(cliente.Id);
+
+        //Si no se econtró un cliente
+        if (usuarioCliente == null) {
+          return StatusCode(500, "El cliente no tiene usuario asociado.");
+        }
+
+        //Devolver informacion de cliente y usuario
+        return Ok(new {
+          usuario = new {
+            id = usuarioCliente.Id,
+            user = usuarioCliente.User,
+            rol = usuarioCliente.Rol
+          },
+          cliente
+        });
       }
 
-      //Si se encontró un administrador
-      if (usuario.GetType() == typeof(Usuario)) {
-        return Ok(json);
+      //Si se encontró un administrador, retornar sólo información de usuario
+      if (resultado is Usuario admin) {
+        return Ok( new {
+          usuario = new {
+            id = admin.Id,
+            user = admin.User,
+            rol = admin.Rol
+          }
+        });
       }
 
-      return NotFound("No se encontró ningún usuario con esas credenciales.");
+      return StatusCode(500, "No se pudo iniciar la sesión del usuario.");
     }
 
 
