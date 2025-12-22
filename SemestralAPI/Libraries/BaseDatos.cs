@@ -1797,6 +1797,57 @@ namespace SemestralAPI.Libraries {
       }
     }
 
+    //Obtener orden en revisión
+    public Orden ObtenerOrdenEnRevision(int usuarioId) {
+      try {
+        //Limpiar parámetros anteriores
+        _cmd.Parameters.Clear();
+
+        //Construir query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText =
+            "SELECT id, estado, fecha, usuario_id, subtotal, total " +
+            "FROM orden " +
+            "WHERE usuario_id = @usuario_id AND estado = 'revision'";
+
+        //Definir parámetros
+        _cmd.Parameters.AddWithValue("@usuario_id", usuarioId);
+
+        //Abrir conexión si no está abierta
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Dataset
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+        adapter.SelectCommand = _cmd;
+        adapter.Fill(ds);
+
+        //Si no hay orden en proceso
+        if (ds.Tables[0].Rows.Count == 0)
+          return null;
+
+        DataRow row = ds.Tables[0].Rows[0];
+
+        //Retornar Orden en proceso
+        return new Orden {
+          Id = Convert.ToInt32(row["id"]),
+          Estado = row["estado"].ToString()!,
+          Fecha = Convert.ToDateTime(row["fecha"]),
+          Usuario_Id = Convert.ToInt32(row["usuario_id"]),
+          Subtotal = Convert.ToDecimal(row["subtotal"]),
+          Total = Convert.ToDecimal(row["total"])
+        };
+
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerOrdenEnProceso: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
     //Iniciar Orden vacía, sólo se necesita usuario a asociar
     public int CrearOrden(int usuarioId) {
       try {
@@ -1900,7 +1951,7 @@ namespace SemestralAPI.Libraries {
 
         //Validar estado
         string estadoActual = row["estado"].ToString();
-        if (estadoActual != "procesando")
+        if (estadoActual != "revision")
           throw new InvalidOperationException("ESTADO_INVALIDO");
 
         decimal subtotal = Convert.ToDecimal(row["subtotal"]);
