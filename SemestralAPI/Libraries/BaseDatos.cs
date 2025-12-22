@@ -2118,7 +2118,5 @@ namespace SemestralAPI.Libraries {
           _cmd.Connection.Close();
       }
     }
-
-
   }
 }
