@@ -20,6 +20,24 @@ namespace SemestralAPI.Controllers {
       );
     }
 
+    //Obtener todas las ordenes en proceso
+    [HttpGet("procesando")]
+    public ActionResult ObtenerOrdenesEnProceso() {
+      try {
+        List<Orden> ordenes = bd.ObtenerOrdenesEnProceso();
+
+        if (ordenes == null || ordenes.Count == 0)
+          return NotFound(new { mensaje = "No hay órdenes en proceso." });
+
+        return Ok(ordenes);
+
+      } catch (Exception ex) {
+        Console.WriteLine("Error en endpoint ObtenerOrdenesEnProceso: " + ex.Message);
+        return StatusCode(500, "Error al obtener órdenes en proceso.");
+      }
+    }
+
+
     //Obtener información de orden en proceso (total de un carrito, subtotal del carrito...)
     [HttpGet("{usuarioId:int}")]
     public ActionResult ObtenerCarritoInfo(int usuarioId) {

@@ -26,7 +26,7 @@ namespace SemestralAPI.Controllers {
       );
     }
 
-    //Obtener lista de Artículos
+    //Obtener lista de Categorías
     [HttpGet]
     public ActionResult<List<Categoria>> ObtenerCategorias() {
 

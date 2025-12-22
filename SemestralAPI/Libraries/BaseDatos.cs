@@ -1572,6 +1572,61 @@ namespace SemestralAPI.Libraries {
 
     //***ORDENES***//
 
+    //Obtener ordenes en proceso (por ser aprobadas)
+    public List<Orden> ObtenerOrdenesEnProceso() {
+      List<Orden> listaOrdenes = new List<Orden>();
+
+      try {
+        //Limpiar parámetros anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = @"
+            SELECT id, usuario_id, subtotal, descuento, total, fecha, itbms, estado
+            FROM orden
+            WHERE estado = 'procesando'
+            ORDER BY fecha DESC;
+        ";
+
+        //Abrir conexión si no está abierta
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Inicializar dataset y adapter
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+
+        //Rellenar dataset y ejecutar comando
+        adapter.SelectCommand = _cmd;
+        adapter.Fill(ds);
+
+        //Recorrer resultados
+        foreach (DataRow row in ds.Tables[0].Rows) {
+          listaOrdenes.Add(new Orden {
+            Id = Convert.ToInt32(row["id"]),
+            Usuario_Id = Convert.ToInt32(row["usuario_id"]),
+            Subtotal = Convert.ToDecimal(row["subtotal"]),
+            Descuento = Convert.ToDecimal(row["descuento"]),
+            Total = Convert.ToDecimal(row["total"]),
+            Fecha = Convert.ToDateTime(row["fecha"]),
+            Itbms = Convert.ToDecimal(row["itbms"]),
+            Estado = row["estado"].ToString()!
+          });
+        }
+
+        return listaOrdenes;
+
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerOrdenesEnProceso: " + ex.Message);
+        return null;
+
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
     //Obtener una orden por su Id
     public Orden ObtenerOrdenPorId(int ordenId) {
       try {
