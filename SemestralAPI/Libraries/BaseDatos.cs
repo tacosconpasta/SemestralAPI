@@ -1431,8 +1431,152 @@ namespace SemestralAPI.Libraries {
       }
     }
 
+    public Cupon BuscarCuponPorCodigo(string codigo) {
+      try {
+        //Limpiar parámetros de querys anteriores
+        _cmd.Parameters.Clear();
+
+        //COnstruir query para obtener id de cupon en base a codigo de cupon
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = @"
+            SELECT id, codigo, descuento, estado
+            FROM cupon
+            WHERE codigo = @codigo
+            LIMIT 1;
+          ";
+        _cmd.Parameters.AddWithValue("@codigo", codigo);
+
+        //Abrir conexión, si cerrada
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //DataSet y adapter
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter {
+          SelectCommand = _cmd
+        };
+
+        //Rellenar adapter
+        adapter.Fill(ds);
+
+        //Verificar filas
+        if (ds.Tables[0].Rows.Count == 0)
+          return null;
+
+        DataRow row = ds.Tables[0].Rows[0];
+
+        //Retornar cupon si existe
+        return new Cupon {
+          Id = Convert.ToInt32(row["id"]),
+          Codigo = row["codigo"].ToString(),
+          Descuento = Convert.ToDecimal(row["descuento"]),
+          Estado = Convert.ToBoolean(row["estado"])
+        };
+
+      } catch (Exception ex) {
+        Console.WriteLine("Error BuscarCuponPorCodigo: " + ex.Message);
+        return null;
+      } finally {
+        _cmd.Connection.Close();
+      }
+    }
+
+    public bool AplicarCuponAOrden(int ordenId, int? cuponId) {
+      try {
+        _cmd.Parameters.Clear();
+
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = @"
+            UPDATE orden
+            SET cupon_id = @cupon_id
+            WHERE id = @orden_id;
+        ";
+
+        _cmd.Parameters.AddWithValue("@orden_id", ordenId);
+
+        if (cuponId.HasValue)
+          _cmd.Parameters.AddWithValue("@cupon_id", cuponId.Value);
+        else
+          _cmd.Parameters.AddWithValue("@cupon_id", DBNull.Value);
+
+        _cmd.Connection.Open();
+
+        return _cmd.ExecuteNonQuery() > 0;
+
+      } catch (Exception ex) {
+        Console.WriteLine("Error AplicarCuponAOrden: " + ex.Message);
+        return false;
+      } finally {
+        _cmd.Connection.Close();
+      }
+    }
+
+
+
 
     //***ORDENES***//
+
+    //Obtener una orden por su Id
+    public Orden ObtenerOrdenPorId(int ordenId) {
+      try {
+        //Limpiar parametros de Querys anteriores
+        _cmd.Parameters.Clear();
+
+        //Construir Query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = @"
+          SELECT
+              id,
+            estado,
+            usuario_id,
+            cupon_id,
+            subtotal,
+            total,
+            descuento,
+            itbms
+          FROM orden
+          WHERE id = @id
+          LIMIT 1;
+        ";
+        _cmd.Parameters.AddWithValue("@id", ordenId);
+
+        //Abrir conexión si está cerrada
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Inicializar dataset y adapter
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter {
+          SelectCommand = _cmd
+        };
+
+        adapter.Fill(ds);
+
+        //identificar si se recogió alguna orden
+        if (ds.Tables[0].Rows.Count == 0)
+          return null;
+
+        DataRow row = ds.Tables[0].Rows[0];
+
+        //Si existe una orden, retornarla
+        return new Orden {
+          Id = Convert.ToInt32(row["id"]),
+          Estado = row["estado"].ToString(),
+          Usuario_Id = Convert.ToInt32(row["usuario_id"]),
+          Cupon_Id = row["cupon_id"] == DBNull.Value ? null : (int?) Convert.ToInt32(row["cupon_id"]),
+          Subtotal = Convert.ToDecimal(row["subtotal"]),
+          Total = Convert.ToDecimal(row["total"]),
+          Descuento = row["descuento"] == DBNull.Value ? 0 : Convert.ToDecimal(row["descuento"]),
+          Itbms = Convert.ToDecimal(row["itbms"])
+        };
+
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerOrdenPorId: " + ex.Message);
+        return null;
+      } finally {
+        _cmd.Connection.Close();
+      }
+    }
 
     //Obtener INFORMACIÓN de Carrito (No el carrito)
     public Orden ObtenerOrdenEnProceso(int usuarioId) {
@@ -1526,56 +1670,131 @@ namespace SemestralAPI.Libraries {
       }
     }
 
-    //Finalizar una orden (proceso -> revision)
+    //Actualizar solo el estado de una orden
+    public bool ActualizarEstadoOrden(int ordenId, string estado) {
+      try {
+        _cmd.Parameters.Clear();
+
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = @"
+            UPDATE orden
+            SET estado = @estado
+            WHERE id = @id;
+        ";
+
+        _cmd.Parameters.AddWithValue("@id", ordenId);
+        _cmd.Parameters.AddWithValue("@estado", estado);
+
+        _cmd.Connection.Open();
+
+        return _cmd.ExecuteNonQuery() > 0;
+
+      } catch (Exception ex) {
+        Console.WriteLine("Error ActualizarEstadoOrden: " + ex.Message);
+        return false;
+      } finally {
+        _cmd.Connection.Close();
+      }
+    }
+
+    //Finalizar una orden (proceso => revision) y crear factura
     public bool FinalizarOrden(int ordenId) {
       try {
         //Limpiar parámetros anteriores
         _cmd.Parameters.Clear();
 
-        //Verificar estado actual de la orden
-        _cmd.CommandType = CommandType.Text;
-        _cmd.CommandText =
-            "SELECT estado " +
-            "FROM orden " +
-            "WHERE id = @orden_id";
-
-        _cmd.Parameters.AddWithValue("@orden_id", ordenId);
-
-        //Abrir conexión
+        //Abrir conexión si está cerrada
         if (_cmd.Connection.State != ConnectionState.Open)
           _cmd.Connection.Open();
 
-        object estadoObj = _cmd.ExecuteScalar();
-
-        //Si la orden no existe
-        if (estadoObj == null)
-          return false;
-
-        //Obtener estado actual
-        string estadoActual = estadoObj.ToString();
-
-        //Solo permitir transición desde 'proceso', osea que no se puede finalizar una orden cancelada
-        if (estadoActual != "proceso")
-          throw new InvalidOperationException("ESTADO_INVALIDO");
-
-        //UPDATE el estado
-        _cmd.Parameters.Clear();
-        _cmd.CommandText =
-            "UPDATE orden " +
-            "SET estado = 'revision' " +
-            "WHERE id = @orden_id";
+        //1️⃣ Obtener datos de la orden
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = @"
+      SELECT
+        estado,
+        subtotal,
+        COALESCE(descuento, 0) AS descuento,
+        total,
+        itbms,
+        usuario_id
+      FROM orden
+      WHERE id = @orden_id;
+    ";
         _cmd.Parameters.AddWithValue("@orden_id", ordenId);
 
-        //Ejecutar query
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+        adapter.SelectCommand = _cmd;
+        adapter.Fill(ds);
+
+        //Si la orden no existe
+        if (ds.Tables[0].Rows.Count == 0)
+          return false;
+
+        DataRow row = ds.Tables[0].Rows[0];
+
+        //Validar estado
+        string estadoActual = row["estado"].ToString();
+        if (estadoActual != "procesando")
+          throw new InvalidOperationException("ESTADO_INVALIDO");
+
+        decimal subtotal = Convert.ToDecimal(row["subtotal"]);
+        decimal descuento = Convert.ToDecimal(row["descuento"]);
+        decimal total = Convert.ToDecimal(row["total"]);
+        decimal itbms = Convert.ToDecimal(row["itbms"]);
+        int usuarioId = Convert.ToInt32(row["usuario_id"]);
+
+        //2️⃣ Cambiar estado de la orden
+        _cmd.Parameters.Clear();
+        _cmd.CommandText = @"
+      UPDATE orden
+      SET estado = 'revision'
+      WHERE id = @orden_id;
+    ";
+        _cmd.Parameters.AddWithValue("@orden_id", ordenId);
+
+        if (_cmd.ExecuteNonQuery() == 0)
+          return false;
+
+        //3️⃣ Crear factura
+        _cmd.Parameters.Clear();
+        _cmd.CommandText = @"
+      INSERT INTO factura (
+        subtotal,
+        descuento,
+        total,
+        fecha,
+        itbms,
+        usuario_id
+      )
+      VALUES (
+        @subtotal,
+        @descuento,
+        @total,
+        NOW(),
+        @itbms,
+        @usuario_id
+      );
+    ";
+
+        _cmd.Parameters.AddWithValue("@subtotal", subtotal);
+        _cmd.Parameters.AddWithValue("@descuento", descuento);
+        _cmd.Parameters.AddWithValue("@total", total);
+        _cmd.Parameters.AddWithValue("@itbms", itbms);
+        _cmd.Parameters.AddWithValue("@usuario_id", usuarioId);
+
+        //Insertar factura
         int rows = _cmd.ExecuteNonQuery();
 
-        ///Retornar si afectó a más de 0 filas
         return rows > 0;
+
       } catch (InvalidOperationException) {
         throw;
+
       } catch (Exception ex) {
         Console.WriteLine("Error FinalizarOrden: " + ex.Message);
         return false;
+
       } finally {
         if (_cmd.Connection.State != ConnectionState.Closed)
           _cmd.Connection.Close();
@@ -1899,5 +2118,7 @@ namespace SemestralAPI.Libraries {
           _cmd.Connection.Close();
       }
     }
+
+
   }
 }

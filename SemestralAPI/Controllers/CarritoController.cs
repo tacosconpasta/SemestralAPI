@@ -108,7 +108,7 @@ namespace SemestralAPI.Controllers {
     }
 
     [HttpPut]
-    public ActionResult ActualizarCarrito(AgregarArticuloCarritoRequest actualizar) {
+    public ActionResult ActualizarCarrito(EditarArticuloCarritoRequest actualizar) {
 
       //Validación de objeto
       if (actualizar == null)

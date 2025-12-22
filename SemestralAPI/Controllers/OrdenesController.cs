@@ -59,5 +59,75 @@ namespace SemestralAPI.Controllers {
         orden_id = ordenId
       });
     }
+
+    //Actualizar Orden (solo estado)
+    [HttpPut("{ordenId:int}")]
+    public ActionResult ActualizarOrden(int ordenId, [FromBody] EditarOrdenRequest req) {
+
+      //Validar id
+      if (ordenId <= 0)
+        return BadRequest("Id de orden inválido.");
+
+      //Validar estado
+      if (string.IsNullOrWhiteSpace(req.Estado))
+        return BadRequest("Debe enviar un estado válido.");
+
+      //Buscar orden
+      Orden orden = bd.ObtenerOrdenPorId(ordenId);
+
+      if (orden == null)
+        return NotFound("La orden no existe.");
+
+      //Actualizar estado
+      orden.Estado = req.Estado;
+
+      //Guardar cambios
+      bool actualizado = bd.ActualizarEstadoOrden(ordenId, orden.Estado);
+
+      if (!actualizado)
+        return StatusCode(500, "No se pudo actualizar la orden.");
+
+      //Volver a consultar para renderizar
+      Orden ordenActualizada = bd.ObtenerOrdenPorId(ordenId);
+
+      return Ok(ordenActualizada);
+    }
+
+
+    //Finalizar una orden (Checkout)
+    [HttpPut("finalizar/{orden_id:int}")]
+    public ActionResult FinalizarOrden(int orden_id) {
+
+      if (orden_id <= 0)
+        return BadRequest(new { mensaje = "El id de la orden debe ser válido." });
+
+      Orden orden = bd.ObtenerOrdenPorId(orden_id);
+      if (orden == null)
+        return NotFound(new { mensaje = "La orden no existe." });
+
+      try {
+        bool finalizada = bd.FinalizarOrden(orden_id);
+
+        if (!finalizada)
+          return StatusCode(500, "No se pudo finalizar la orden.");
+
+        return Ok(new {
+          mensaje = "Orden finalizada y factura creada correctamente.",
+          ordenId = orden_id,
+          nuevoEstado = "revision"
+        });
+
+      } catch (InvalidOperationException ex) {
+        if (ex.Message == "ESTADO_INVALIDO") {
+          return BadRequest(new {
+            mensaje = "La orden no se puede finalizar porque no está en proceso.",
+            estadoActual = orden.Estado
+          });
+        }
+
+        return StatusCode(500, "Error al finalizar la orden.");
+      }
+    }
+
   }
 }
