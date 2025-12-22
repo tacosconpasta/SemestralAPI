@@ -1330,7 +1330,7 @@ namespace SemestralAPI.Libraries {
         _cmd.CommandText =
             "SELECT id, estado, fecha, usuario_id, cupon_id, subtotal, total " +
             "FROM orden " +
-            "WHERE usuario_id = @usuario_id AND estado = 'proceso'";
+            "WHERE usuario_id = @usuario_id AND estado = 'procesando'";
 
         //Definir parámetros
         _cmd.Parameters.AddWithValue("@usuario_id", usuarioId);
