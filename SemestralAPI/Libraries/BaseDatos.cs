@@ -1707,7 +1707,7 @@ namespace SemestralAPI.Libraries {
         if (_cmd.Connection.State != ConnectionState.Open)
           _cmd.Connection.Open();
 
-        //1️⃣ Obtener datos de la orden
+        //1️ Obtener datos de la orden
         _cmd.CommandType = CommandType.Text;
         _cmd.CommandText = @"
       SELECT
@@ -1744,7 +1744,7 @@ namespace SemestralAPI.Libraries {
         decimal itbms = Convert.ToDecimal(row["itbms"]);
         int usuarioId = Convert.ToInt32(row["usuario_id"]);
 
-        //2️⃣ Cambiar estado de la orden
+        //2️ Cambiar estado de la orden
         _cmd.Parameters.Clear();
         _cmd.CommandText = @"
       UPDATE orden
@@ -1756,7 +1756,7 @@ namespace SemestralAPI.Libraries {
         if (_cmd.ExecuteNonQuery() == 0)
           return false;
 
-        //3️⃣ Crear factura
+        //3️ Crear factura
         _cmd.Parameters.Clear();
         _cmd.CommandText = @"
       INSERT INTO factura (
