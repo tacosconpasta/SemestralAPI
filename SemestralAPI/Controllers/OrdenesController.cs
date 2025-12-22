@@ -37,6 +37,23 @@ namespace SemestralAPI.Controllers {
       }
     }
 
+    //Obtener todas las ordenes en revision
+    [HttpGet("revision")]
+    public ActionResult ObtenerOrdenesEnRevision() {
+      try {
+        List<Orden> ordenes = bd.ObtenerOrdenesEnRevision();
+
+        if (ordenes == null || ordenes.Count == 0)
+          return NotFound(new { mensaje = "No hay órdenes en revision." });
+
+        return Ok(ordenes);
+
+      } catch (Exception ex) {
+        Console.WriteLine("Error en endpoint ObtenerOrdenesEnRevision: " + ex.Message);
+        return StatusCode(500, "Error al obtener órdenes en 'revisión'.");
+      }
+    }
+
 
     //Obtener información de orden en proceso (total de un carrito, subtotal del carrito...)
     [HttpGet("{usuarioId:int}")]
