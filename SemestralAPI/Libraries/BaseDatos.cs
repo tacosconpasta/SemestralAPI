@@ -837,6 +837,61 @@ namespace SemestralAPI.Libraries {
       }
     }
 
+    //Obtener categorías de un Artículo
+    public List<Categoria> ObtenerCategoriasPorArticulo(int articuloId) {
+      try {
+        //Limpiar parámetros anteriores
+        _cmd.Parameters.Clear();
+
+        //Preparar query
+        _cmd.CommandType = CommandType.Text;
+        _cmd.CommandText = @"
+            SELECT c.id, c.nombre, c.categoria_padre_id
+            FROM articulo_categoria ac
+            INNER JOIN categoria c ON c.id = ac.id_categoria
+            WHERE ac.id_articulo = @articulo_id
+            ORDER BY c.nombre;
+         ";
+        _cmd.Parameters.AddWithValue("@articulo_id", articuloId);
+
+        //Abrir conexión si está cerrada
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        //Inicializar dataset y adapter y rellenarlo
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+        adapter.SelectCommand = _cmd;
+        adapter.Fill(ds);
+
+        //Preparar lista a devolver
+        List<Categoria> categorias = new List<Categoria>();
+
+        //Si no hay resultados, devolver lista vacía
+        if (ds.Tables.Count == 0 || ds.Tables[0].Rows.Count == 0)
+          return categorias;
+
+        //Mapear resultados
+        foreach (DataRow row in ds.Tables[0].Rows) {
+          categorias.Add(new Categoria {
+            Id = Convert.ToInt32(row["id"]),
+            Nombre = row["nombre"].ToString(),
+            CategoriaPadreId = row["categoria_padre_id"] == DBNull.Value
+                                ? (int?) null
+                                : Convert.ToInt32(row["categoria_padre_id"])
+          });
+        }
+
+        return categorias;
+      } catch (Exception ex) {
+        Console.WriteLine("Error ObtenerCategoriasPorArticulo: " + ex.Message);
+        return null;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
 
 
 

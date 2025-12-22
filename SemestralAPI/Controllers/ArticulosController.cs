@@ -186,5 +186,27 @@ namespace SemestralAPI.Controllers {
       });
     }
 
+
+    //Obtener categorías de Artículo
+    [HttpGet("{id:int}/categorias")]
+    public ActionResult ObtenerCategoriasArticulo(int id) {
+
+      if (id <= 0)
+        return BadRequest("Id de artículo inválido.");
+
+      //Verificar que el artículo exista
+      var articulo = bd.ObtenerArticuloPorId(id);
+      if (articulo == null)
+        return NotFound($"No existe un artículo con id {id}.");
+
+      //Obtener categorías
+      var categorias = bd.ObtenerCategoriasPorArticulo(id);
+
+      if (categorias == null)
+        return StatusCode(500, "No se pudieron obtener las categorías del artículo.");
+
+      return Ok(categorias);
+    }
+
   }
 }
