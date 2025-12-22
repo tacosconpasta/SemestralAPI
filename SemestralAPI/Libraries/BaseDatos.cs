@@ -2253,30 +2253,45 @@ namespace SemestralAPI.Libraries {
 
 
     //***FOTOS***//
-    public Foto AgregarFoto(Foto fotoAInsertar) {
+    //Buscar ruta de foto de un artículo por Id de Artículo
+    public string BuscarFotoUsuario(int articulo_id) {
       try {
-        //Limpiar parámetros de query anterior
+        //Limpiar parámetros anteriores
         _cmd.Parameters.Clear();
 
-        //Construir Query
+        //Preparar query
         _cmd.CommandType = CommandType.Text;
-        _cmd.CommandText = "INSERT INTO foto VALUES(@foto, @articulo_id)";
-        _cmd.Parameters.AddWithValue("@foto", fotoAInsertar.FotoPrincipal);
-        _cmd.Parameters.AddWithValue("@articulo_id", fotoAInsertar.ArticuloId);
+        _cmd.CommandText = "SELECT foto_principal FROM foto WHERE articulo_id = @articulo_id;";
+        _cmd.Parameters.AddWithValue("@articulo_id", articulo_id);
 
-        //Abrir conexion si está cerrada
+        //Abrir conexión
         if (_cmd.Connection.State != ConnectionState.Open)
           _cmd.Connection.Open();
 
-        //Obtener ID por separado, para debuggear con mayor facilidad
-        var newId = _cmd.ExecuteScalar();
-        fotoAInsertar.Id = Convert.ToInt32(newId);
+        //Dataset y adapter
+        DataSet ds = new DataSet();
+        NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+        adapter.SelectCommand = _cmd;
 
-        return fotoAInsertar;
-      } catch (Exception e) {
-        Console.Error.WriteLine("Ocurrió un error AgregarFoto: " + e.Message);
+        //Ejecutar query
+        adapter.Fill(ds);
+
+        //Cerrar conexión
+        _cmd.Connection.Close();
+
+        //Si no hay resultado, retornar null
+        if (ds.Tables.Count == 0 || ds.Tables[0].Rows.Count == 0)
+          return null;
+
+        //Retornar la ruta de la foto
+        return ds.Tables[0].Rows[0]["foto_principal"].ToString();
+
+      } catch (Exception ex) {
+        Console.WriteLine("Error BuscarFotoArtículo: " + ex.Message);
         return null;
-
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
       }
     }
 

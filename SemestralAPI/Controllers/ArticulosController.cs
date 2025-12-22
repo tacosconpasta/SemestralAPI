@@ -235,5 +235,37 @@ namespace SemestralAPI.Controllers {
         categorias = req.CategoriasIds
       });
     }
+
+
+    //Obtener ruta de la foto de un usuario por su ID
+    [HttpGet("{articulo_id}/foto")]
+    public ActionResult ObtenerFotoUsuario(int articulo_id) {
+      try {
+        //Validar ID
+        if (articulo_id <= 0)
+          return BadRequest(new { mensaje = "El ID de artículo debe ser válido." });
+
+        //Verificar si artículo existe
+        Articulo articulo = bd.ObtenerArticuloPorId(articulo_id);
+
+        if (articulo == null)
+          return NotFound("No existe un artículo con ese id");
+
+        //Buscar ruta de foto en base de datos
+        string rutaFoto = bd.BuscarFotoUsuario(articulo_id);
+
+        //Si no se encontró la foto
+        if (string.IsNullOrEmpty(rutaFoto))
+          return NotFound(new { mensaje = "No se encontró la foto del artículo." });
+
+        //Devolver ruta de la foto
+        return Ok(new { foto = rutaFoto });
+
+      } catch (Exception ex) {
+        Console.WriteLine("Error en endpoint ObtenerFotoUsuario: " + ex.Message);
+        return StatusCode(500, new { mensaje = "Error al obtener la foto del usuario." });
+      }
+    }
+
   }
 }
