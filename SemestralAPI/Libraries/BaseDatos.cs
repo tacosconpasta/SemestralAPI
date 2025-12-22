@@ -1748,7 +1748,7 @@ namespace SemestralAPI.Libraries {
         _cmd.Parameters.Clear();
         _cmd.CommandText = @"
       UPDATE orden
-      SET estado = 'revision'
+      SET estado = 'completada'
       WHERE id = @orden_id;
     ";
         _cmd.Parameters.AddWithValue("@orden_id", ordenId);
