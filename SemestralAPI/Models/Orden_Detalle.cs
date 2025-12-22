@@ -6,7 +6,6 @@
     public int Cantidad { get; set; }
     public DateTime Created_At { get; set; }
     public DateTime Updated_At { get; set; }
-    public decimal Precio_Unitario { get; set; }
     public decimal Precio_Final { get; set; }
   }
 }
