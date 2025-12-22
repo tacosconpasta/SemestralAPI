@@ -79,6 +79,35 @@ namespace SemestralAPI.Controllers {
       return StatusCode(500, "No se pudo iniciar la sesión del usuario.");
     }
 
+    //Buscar usuario por su ID
+    [HttpGet("usuario/{id}")]
+    public ActionResult ObtenerUsuarioPorId(int id) {
+      try {
+        //Validar ID
+        if (id <= 0)
+          return BadRequest(new { mensaje = "El ID de usuario debe ser válido." });
+
+        //Buscar usuario en base de datos
+        Usuario usuario = _bd.BuscarUsuario(id);
+
+        //Si no se encontró usuario
+        if (usuario == null)
+          return NotFound(new { mensaje = "No se encontró el usuario con ese ID." });
+
+        //Devolver información del usuario
+        return Ok(new {
+          id = usuario.Id,
+          user = usuario.User,
+          rol = usuario.Rol,
+          cliente_id = usuario.ClienteId
+        });
+
+      } catch (Exception ex) {
+        Console.WriteLine("Error en endpoint ObtenerUsuarioPorId: " + ex.Message);
+        return StatusCode(500, new { mensaje = "Error al obtener el usuario." });
+      }
+    }
+
 
     [HttpPost("register/cliente")]
     public ActionResult<Cliente> Register([FromBody] RegisterClienteRequest request) {

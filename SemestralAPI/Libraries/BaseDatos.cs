@@ -392,7 +392,7 @@ namespace SemestralAPI.Libraries {
 
       //Construir sentencia
       _cmd.CommandType = System.Data.CommandType.Text;
-      _cmd.CommandText = "SELECT id, usuario FROM usuario WHERE id = @usuario_id";
+      _cmd.CommandText = "SELECT id, usuario, rol FROM usuario WHERE id = @usuario_id";
       _cmd.Parameters.AddWithValue("@usuario_id", usuario_id);
 
       //Abrir conexión
@@ -422,6 +422,7 @@ namespace SemestralAPI.Libraries {
       //Asignar datos a usuario
       usuario.User = ds.Tables[0].Rows[0]["usuario"].ToString();
       usuario.Id = Convert.ToInt32(ds.Tables[0].Rows[0]["id"].ToString());
+      usuario.Rol = ds.Tables[0].Rows[0]["rol"].ToString();
 
       return usuario;
     }
