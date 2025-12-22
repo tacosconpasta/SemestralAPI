@@ -1346,6 +1346,62 @@ namespace SemestralAPI.Libraries {
       }
     }
 
+    //Asignar varias categorías a un artículo
+    public bool AsignarCategoriasArticulo(int articuloId, List<int> categoriasIds) {
+      try {
+        //Validar lista
+        if (categoriasIds == null || categoriasIds.Count == 0)
+          return false;
+
+        //Abrir conexión si está cerrada
+        if (_cmd.Connection.State != ConnectionState.Open)
+          _cmd.Connection.Open();
+
+        foreach (int categoriaId in categoriasIds) {
+
+          //Verificar que la categoría exista
+          _cmd.Parameters.Clear();
+          _cmd.CommandType = CommandType.Text;
+          _cmd.CommandText = "SELECT id FROM categoria WHERE id = @id;";
+          _cmd.Parameters.AddWithValue("@id", categoriaId);
+
+          //Inicializar dataset
+          DataSet ds = new DataSet();
+          NpgsqlDataAdapter adapter = new NpgsqlDataAdapter();
+          adapter.SelectCommand = _cmd;
+          adapter.Fill(ds);
+
+          //Categoría inválida, se ignora
+          if (ds.Tables[0].Rows.Count == 0)
+            continue; 
+
+          //Insertar relación (si ya existe, se ignora)
+          _cmd.Parameters.Clear();
+          _cmd.CommandText = @"
+            INSERT INTO articulo_categoria (id_articulo, id_categoria)
+             VALUES (@articulo_id, @categoria_id)
+            ON CONFLICT DO NOTHING;
+          ";
+
+          _cmd.Parameters.AddWithValue("@articulo_id", articuloId);
+          _cmd.Parameters.AddWithValue("@categoria_id", categoriaId);
+
+          _cmd.ExecuteNonQuery();
+        }
+
+        //Retornar cierto
+        return true;
+
+      } catch (Exception ex) {
+        Console.WriteLine("Error AsignarCategoriasArticulo: " + ex.Message);
+        return false;
+      } finally {
+        if (_cmd.Connection.State != ConnectionState.Closed)
+          _cmd.Connection.Close();
+      }
+    }
+
+
 
 
 

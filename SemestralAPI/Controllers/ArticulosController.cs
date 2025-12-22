@@ -2,6 +2,7 @@
 using SemestralAPI.Libraries;
 using SemestralAPI.Models;
 using SemestralAPI.RequestParams.Articulos;
+using SemestralAPI.RequestParams.Articulos.Categorias;
 
 namespace SemestralAPI.Controllers {
 
@@ -208,5 +209,31 @@ namespace SemestralAPI.Controllers {
       return Ok(categorias);
     }
 
+    //Asignar categorías a un artículo
+    [HttpPost("{articuloId:int}/categorias")]
+    public ActionResult AsignarCategorias(int articuloId, [FromBody] AgregarCategoriasArticuloRequest req) {
+
+      //Validación id
+      if (articuloId <= 0)
+        return BadRequest("Id de artículo inválido.");
+
+      //Si no vinieron categorías
+      if (req?.CategoriasIds == null || req.CategoriasIds.Count == 0)
+        return BadRequest("Debe enviar al menos una categoría.");
+
+      //Si se logró asignar las categorías
+      bool asignado = bd.AsignarCategoriasArticulo(articuloId, req.CategoriasIds);
+
+      //Si no se asignaron
+      if (!asignado)
+        return StatusCode(500, "No se pudieron asignar las categorías.");
+
+      //Retornar el id artículo y categorías
+      return Ok(new {
+        mensaje = "Categorías asignadas correctamente.",
+        articuloId = articuloId,
+        categorias = req.CategoriasIds
+      });
+    }
   }
 }
