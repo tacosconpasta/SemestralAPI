@@ -2267,7 +2267,6 @@ namespace SemestralAPI.Libraries {
         foreach (DataRow row in ds.Tables[0].Rows) {
           listaFacturas.Add(new Factura {
             Id = Convert.ToInt32(row["id"]),
-            CuponId = row["cupon_id"] == DBNull.Value ? null : Convert.ToInt32(row["cupon_id"]),
             Subtotal = float.Parse(row["subtotal"].ToString()!),
             Total = float.Parse(row["total"].ToString()!),
             Fecha = Convert.ToDateTime(row["fecha"]),
