@@ -2245,7 +2245,7 @@ namespace SemestralAPI.Libraries {
 
         //Preparar query
         _cmd.CommandType = CommandType.Text;
-        _cmd.CommandText = "SELECT id, cupon_id, subtotal, total, fecha, itbms, usuario_id FROM factura;";
+        _cmd.CommandText = "SELECT id, subtotal, total, fecha, itbms, usuario_id FROM factura;";
 
         //Abrir conexión si no está abierta
         if (_cmd.Connection.State != ConnectionState.Open)
